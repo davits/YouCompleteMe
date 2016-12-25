@@ -41,7 +41,6 @@ from ycmd import utils
 from ycmd import server_utils
 from ycmd.request_wrap import RequestWrap
 from ycmd.responses import ServerError
-from ycm.diagnostic_interface import DiagnosticInterface
 from ycm.omni_completer import OmniCompleter
 from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
@@ -114,9 +113,8 @@ class YouCompleteMe( object ):
     self._available_completers = {}
     self._user_options = user_options
     self._user_notified_about_crash = False
-    self._diag_interface = DiagnosticInterface( user_options )
     self._omnicomp = OmniCompleter( user_options )
-    self._buffers = BufferDict()
+    self._buffers = BufferDict( user_options )
     self._buffer = None
     self._latest_completion_request = None
     self._logger = logging.getLogger( 'ycm' )
@@ -400,7 +398,7 @@ class YouCompleteMe( object ):
 
 
   def OnCursorMoved( self ):
-    self._diag_interface.OnCursorMoved()
+    self._buffer.OnCursorMoved()
 
 
   def _CleanLogfile( self ):
@@ -584,11 +582,13 @@ class YouCompleteMe( object ):
 
 
   def GetErrorCount( self ):
-    return self._diag_interface.GetErrorCount()
+    current_buffer = self._buffers[ vim.current.buffer.number ]
+    return current_buffer.GetErrorCount()
 
 
   def GetWarningCount( self ):
-    return self._diag_interface.GetWarningCount()
+    current_buffer = self._buffers[ vim.current.buffer.number ]
+    return current_buffer.GetWarningCount()
 
 
   def DiagnosticUiSupportedForCurrentFiletype( self ):
@@ -602,14 +602,7 @@ class YouCompleteMe( object ):
 
 
   def PopulateLocationListWithLatestDiagnostics( self ):
-    # Do nothing if loc list is already populated by diag_interface
-    if not self._user_options[ 'always_populate_location_list' ]:
-      self._diag_interface.PopulateLocationList( self._buffer.Diagnostics() )
-    return bool( self._buffer.Diagnostics() )
-
-
-  def UpdateDiagnosticInterface( self ):
-    self._diag_interface.UpdateWithNewDiagnostics( self._buffer.Diagnostics() )
+    return self._buffer.PopulateLocationList()
 
 
   # For testing purposes
@@ -625,7 +618,6 @@ class YouCompleteMe( object ):
     if self.NativeFiletypeCompletionUsable():
       if self.ShouldDisplayDiagnostics():
         self._buffer.UpdateDiagnostics()
-        self.UpdateDiagnosticInterface()
       else:
         # YCM client has a hard-coded list of filetypes which are known
         # to support diagnostics, self.DiagnosticUiSupportedForCurrentFiletype()
@@ -695,7 +687,7 @@ class YouCompleteMe( object ):
       buffer = vim.buffers[ bufnr ]
       request_data = {
         'filepath': vimsupport.GetBufferFilepath( buffer ),
-        'filetypes': vimsupport.FiletypesForBuffer( buffer ),
+        'filetypes': vimsupport.GetBufferFiletypes( buffer.number ),
         'range': {
           'start': {
             'line_num': start_line,
@@ -726,7 +718,7 @@ class YouCompleteMe( object ):
       buffer = vim.buffers[ bufnr ]
       request_data = {
         'filepath': vimsupport.GetBufferFilepath( buffer ),
-        'filetypes': vimsupport.FiletypesForBuffer( buffer ),
+        'filetypes': vimsupport.GetBufferFiletypes( buffer.number ),
       }
       response = BaseRequest.PostDataToHandler( request_data,
                                                 'skipped_ranges',
