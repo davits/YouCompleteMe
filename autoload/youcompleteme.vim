@@ -23,6 +23,7 @@ set cpo&vim
 let s:script_folder_path = escape( expand( '<sfile>:p:h' ), '\' )
 let s:omnifunc_mode = 0
 let s:defer_omnifunc = 1
+let s:timer_id = 0
 
 let s:old_cursor_position = []
 let s:cursor_moved = 0
@@ -195,6 +196,28 @@ EOF
 endfunction
 
 
+function! YCMTimeUp( timer )
+  let s:timer_id = 0
+  let info = v:completed_item[ 'info' ]
+  if info == '' || stridx( info, '(' ) == -1
+    return
+  endif
+  let overloads = split( info, "\n\n" )[0]
+  let il = filter( split( overloads, "\n" ), 'v:val != ""' )
+  call overlayshow(line('.'), col('.'), il)
+endfunction
+
+
+function! s:PumVisible()
+  if s:timer_id != 0
+    call timer_stop( s:timer_id )
+  endif
+  call overlayclose()
+  let s:timer_id = timer_start( 500, 'YCMTimeUp' )
+  return pumvisible()
+endfunction
+
+
 function! s:SetUpKeyMappings()
   " The g:ycm_key_select_completion and g:ycm_key_previous_completion used to
   " exist and are now here purely for the sake of backwards compatibility; we
@@ -216,16 +239,30 @@ function! s:SetUpKeyMappings()
     " With this command, when the completion window is visible, the tab key
     " (default) will select the next candidate in the window. In vim, this also
     " changes the typed-in text to that of the candidate completion.
-    exe 'inoremap <expr>' . key .
-          \ ' pumvisible() ? "\<C-n>" : "\' . key .'"'
+    if has( 'overlay' ) && has( 'timers' )
+      exe 'inoremap <expr>' . key .
+            \ ' <SID>PumVisible() ? "\<C-n>" : "\' . key .'"'
+    else
+      exe 'inoremap <expr>' . key .
+            \ ' pumvisible() ? "\<C-n>" : "\' . key .'"'
+    endif
   endfor
-
 
   for key in g:ycm_key_list_previous_completion
     " This selects the previous candidate for shift-tab (default)
-    exe 'inoremap <expr>' . key .
-          \ ' pumvisible() ? "\<C-p>" : "\' . key .'"'
+    if has( 'overlay' ) && has( 'timers' )
+      exe 'inoremap <expr>' . key .
+            \ ' <SID>PumVisible() ? "\<C-p>" : "\' . key .'"'
+    else
+      exe 'inoremap <expr>' . key .
+            \ ' pumvisible() ? "\<C-p>" : "\' . key .'"'
+    endif
   endfor
+
+  if has('overlay')
+    inoremap <C-k> <C-r>=overlayprev()<CR>
+    inoremap <C-l> <C-r>=overlaynext()<CR>
+  endif
 
   if !empty( g:ycm_key_invoke_completion )
     let invoke_key = g:ycm_key_invoke_completion
@@ -437,6 +474,9 @@ endfunction
 
 
 function! s:OnCompleteDone()
+  if has( 'overlay' )
+    call overlayclose()
+  endif
   exec s:python_command "ycm_state.OnCompleteDone()"
 endfunction
 
