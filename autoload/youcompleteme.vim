@@ -198,6 +198,9 @@ endfunction
 
 function! YCMTimeUp( timer )
   let s:timer_id = 0
+  if !has_key( v:completed_item, 'info' )
+    return
+  endif
   let info = v:completed_item[ 'info' ]
   if info == '' || stridx( info, '(' ) == -1
     return

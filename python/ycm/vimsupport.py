@@ -1048,3 +1048,39 @@ def _SetUpLoadedBuffer( command, filename, fix, position, watch ):
 
   if position == 'end':
     vim.command( 'silent! normal G zz' )
+
+
+def SignatureCoord():
+  line, column = CurrentLineAndColumn()
+  column = vim.current.line.rfind( '(', 0, column )
+  while column == -1:
+    line = line - 1
+    if line == -1:
+      return CurrentLineAndColumn()
+    column = vim.current.buffer[ line ].rfind( '(' )
+  return line, column
+
+
+def ShowFunctionSignature( overloads ):
+  signatures = '['
+  for _, overload in enumerate( overloads ):
+    if 'extra_menu_info' not in overload:
+      # FIXME: HACK!! This is working around some sort of bug where we get an
+      # "overload" with text 'std::' on a_vector.insert(
+      continue
+
+    s = ( overload[ 'extra_menu_info' ]
+          + ' '
+          + overload[ 'menu_text' ] )
+
+    signatures += "'" + s.replace( "&", "&amp;" ) + "',"
+
+  signatures = signatures[ :-1 ] + ']'
+
+  row, col = SignatureCoord()
+  vim.command( 'call overlayshow({0}, {1}, {2}, 1)'.format(
+                 row + 1, col + 1, signatures ) )
+
+
+def ClearFunctionSignature():
+  vim.command( 'call overlayclose()' )
