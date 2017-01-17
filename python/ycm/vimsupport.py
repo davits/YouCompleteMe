@@ -1050,30 +1050,44 @@ def _SetUpLoadedBuffer( command, filename, fix, position, watch ):
     vim.command( 'silent! normal G zz' )
 
 
+def _rFindBracket( s, start, count = 1 ):
+  if start == -1:
+    start = len( s ) - 1
+  for i in range( start, -1, -1 ):
+    if s[ i ] == ')':
+      count += 1
+    if s[ i ] == '(':
+      count -= 1
+      if count == 0:
+        return i, count
+  return -1, count
+
+
 def SignatureCoord():
   line, column = CurrentLineAndColumn()
-  column = vim.current.line.rfind( '(', 0, column )
+  column, count = _rFindBracket( vim.current.line, column - 1 )
   while column == -1:
     line = line - 1
     if line == -1:
       return CurrentLineAndColumn()
-    column = vim.current.buffer[ line ].rfind( '(' )
+    column, count = _rFindBracket( vim.current.buffer[ line ], -1, count )
   return line, column
 
 
 def ShowFunctionSignature( overloads ):
   signatures = '['
+  bla = ''
   for _, overload in enumerate( overloads ):
-    if 'extra_menu_info' not in overload:
-      # FIXME: HACK!! This is working around some sort of bug where we get an
-      # "overload" with text 'std::' on a_vector.insert(
-      continue
-
     s = ( overload[ 'extra_menu_info' ]
           + ' '
           + overload[ 'menu_text' ] )
 
-    signatures += "'" + s.replace( "&", "&amp;" ) + "',"
+    s = s.replace( '&', '&amp;' )
+    s = s.replace( '<', '&lt;' )
+    s = s.replace( '>', '&gt;' )
+    s = s.replace( '^', '<b>', 1 )
+    s = s.replace( '^', '</b>', 1 )
+    signatures += "'" + s + "',"
 
   signatures = signatures[ :-1 ] + ']'
 
