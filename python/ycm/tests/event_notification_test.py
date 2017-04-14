@@ -386,7 +386,9 @@ def EventNotification_FileReadyToParse_TagFiles_UnicodeWorkingDirectory_test(
               'PostDataToHandlerAsync' ) as post_data_to_handler_async:
     with CurrentWorkingDirectory( unicode_dir ):
       with MockVimBuffers( [ current_buffer ], current_buffer, ( 6, 5 ) ):
-        ycm.OnFileReadyToParse()
+        with patch( 'ycm.youcompleteme.YouCompleteMe.IsServerReady',
+                    return_value = True ):
+          ycm.OnFileReadyToParse()
 
     assert_that(
       # Positional arguments passed to PostDataToHandlerAsync.

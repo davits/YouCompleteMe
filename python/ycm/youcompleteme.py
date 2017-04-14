@@ -373,6 +373,10 @@ class YouCompleteMe( object ):
     self._omnicomp.OnFileReadyToParse( None )
 
     self._buffer = self._GetCurrentBuffer()
+
+    if not self.IsServerReady():
+      return
+
     # Do nothing if previous parse request is not finished
     # it will return 'already parsing' anyway.
     if not self._buffer.FileParseRequestReady( block ):
@@ -678,6 +682,8 @@ class YouCompleteMe( object ):
                          end_line, end_column, timeout = 0.01 ):
     if not self.IsServerAlive():
       return []
+    if not self.IsServerReady():
+      return 'Parsing'
     try:
       buffer = vim.buffers[ bufnr ]
       request_data = {
@@ -709,6 +715,8 @@ class YouCompleteMe( object ):
   def GetSkippedRanges( self, bufnr, timeout = 0.01 ):
     if not self.IsServerAlive():
       return []
+    if not self.IsServerReady():
+      return 'Parsing'
     try:
       buffer = vim.buffers[ bufnr ]
       request_data = {
