@@ -19,29 +19,23 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
+# Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
 import contextlib
 import logging
-import requests
-import urllib.parse
 import json
 from future.utils import native
 from base64 import b64decode, b64encode
-from retries import retries
-from requests_futures.sessions import FuturesSession
-from ycm.unsafe_thread_pool_executor import UnsafeThreadPoolExecutor
 from ycm import vimsupport
-from ycmd.utils import ToBytes
+from ycmd.utils import ToBytes, urljoin, urlparse
 from ycmd.hmac_utils import CreateRequestHmac, CreateHmac, SecureBytesEqual
 from ycmd.responses import ServerError, UnknownExtraConf
 
 _HEADERS = {'content-type': 'application/json'}
-_EXECUTOR = UnsafeThreadPoolExecutor( max_workers = 30 )
+_CONNECT_TIMEOUT_SEC = 0.01
 # Setting this to None seems to screw up the Requests/urllib3 libs.
-_DEFAULT_TIMEOUT_SEC = 30
+_READ_TIMEOUT_SEC = 30
 _HMAC_HEADER = 'x-ycm-hmac'
 _logger = logging.getLogger( __name__ )
 
@@ -67,7 +61,7 @@ class BaseRequest( object ):
   # |timeout| is num seconds to tolerate no response from server before giving
   # up; see Requests docs for details (we just pass the param along).
   @staticmethod
-  def GetDataFromHandler( handler, timeout = _DEFAULT_TIMEOUT_SEC ):
+  def GetDataFromHandler( handler, timeout = _READ_TIMEOUT_SEC ):
     return JsonFromFuture( BaseRequest._TalkToHandlerAsync( '',
                                                             handler,
                                                             'GET',
@@ -78,7 +72,7 @@ class BaseRequest( object ):
   # |timeout| is num seconds to tolerate no response from server before giving
   # up; see Requests docs for details (we just pass the param along).
   @staticmethod
-  def PostDataToHandler( data, handler, timeout = _DEFAULT_TIMEOUT_SEC ):
+  def PostDataToHandler( data, handler, timeout = _READ_TIMEOUT_SEC ):
     return JsonFromFuture( BaseRequest.PostDataToHandlerAsync( data,
                                                                handler,
                                                                timeout ) )
@@ -88,7 +82,7 @@ class BaseRequest( object ):
   # |timeout| is num seconds to tolerate no response from server before giving
   # up; see Requests docs for details (we just pass the param along).
   @staticmethod
-  def PostDataToHandlerAsync( data, handler, timeout = _DEFAULT_TIMEOUT_SEC ):
+  def PostDataToHandlerAsync( data, handler, timeout = _READ_TIMEOUT_SEC ):
     return BaseRequest._TalkToHandlerAsync( data, handler, 'POST', timeout )
 
 
@@ -100,44 +94,21 @@ class BaseRequest( object ):
   def _TalkToHandlerAsync( data,
                            handler,
                            method,
-                           timeout = _DEFAULT_TIMEOUT_SEC ):
-    def SendRequest( data, handler, method, timeout ):
-      request_uri = _BuildUri( handler )
-      if method == 'POST':
-        sent_data = _ToUtf8Json( data )
-        return BaseRequest.session.post(
-            request_uri,
-            data = sent_data,
-            headers = BaseRequest._ExtraHeaders( method,
-                                                 request_uri,
-                                                 sent_data ),
-            timeout = timeout )
-      if method == 'GET':
-        return BaseRequest.session.get(
-            request_uri,
-            headers = BaseRequest._ExtraHeaders( method, request_uri ),
-            timeout = timeout )
-
-    @retries( 5, delay = 0.5, backoff = 1.5 )
-    def DelayedSendRequest( data, handler, method ):
-      request_uri = _BuildUri( handler )
-      if method == 'POST':
-        sent_data = _ToUtf8Json( data )
-        return requests.post(
-            request_uri,
-            data = sent_data,
-            headers = BaseRequest._ExtraHeaders( method,
-                                                 request_uri,
-                                                 sent_data ) )
-      if method == 'GET':
-        return requests.get(
-            request_uri,
-            headers = BaseRequest._ExtraHeaders( method, request_uri ) )
-
-    if not _CheckServerIsHealthyWithCache():
-      return _EXECUTOR.submit( DelayedSendRequest, data, handler, method )
-
-    return SendRequest( data, handler, method, timeout )
+                           timeout = _READ_TIMEOUT_SEC ):
+    request_uri = _BuildUri( handler )
+    if method == 'POST':
+      sent_data = _ToUtf8Json( data )
+      return BaseRequest.Session().post(
+          request_uri,
+          data = sent_data,
+          headers = BaseRequest._ExtraHeaders( method,
+                                               request_uri,
+                                               sent_data ),
+          timeout = ( _CONNECT_TIMEOUT_SEC, timeout ) )
+    return BaseRequest.Session().get(
+        request_uri,
+        headers = BaseRequest._ExtraHeaders( method, request_uri ),
+        timeout = ( _CONNECT_TIMEOUT_SEC, timeout ) )
 
 
   @staticmethod
@@ -147,12 +118,36 @@ class BaseRequest( object ):
     headers = dict( _HEADERS )
     headers[ _HMAC_HEADER ] = b64encode(
         CreateRequestHmac( ToBytes( method ),
-                           ToBytes( urllib.parse.urlparse( request_uri ).path ),
+                           ToBytes( urlparse( request_uri ).path ),
                            request_body,
                            BaseRequest.hmac_secret ) )
     return headers
 
-  session = FuturesSession( executor = _EXECUTOR )
+
+  # These two methods exist to avoid importing the requests module at startup;
+  # reducing loading time since this module is slow to import.
+  @classmethod
+  def Requests( cls ):
+    try:
+      return cls.requests
+    except AttributeError:
+      import requests
+      cls.requests = requests
+      return requests
+
+
+  @classmethod
+  def Session( cls ):
+    try:
+      return cls.session
+    except AttributeError:
+      from ycm.unsafe_thread_pool_executor import UnsafeThreadPoolExecutor
+      from requests_futures.sessions import FuturesSession
+      executor = UnsafeThreadPoolExecutor( max_workers = 30 )
+      cls.session = FuturesSession( executor = executor )
+      return cls.session
+
+
   server_location = ''
   hmac_secret = ''
 
@@ -184,7 +179,7 @@ def BuildRequestData( filepath = None ):
 def JsonFromFuture( future ):
   response = future.result()
   _ValidateResponseObject( response )
-  if response.status_code == requests.codes.server_error:
+  if response.status_code == BaseRequest.Requests().codes.server_error:
     raise MakeServerException( response.json() )
 
   # We let Requests handle the other status types, we only handle the 500
@@ -215,12 +210,18 @@ def HandleServerException( display = True, truncate = False ):
      response = BaseRequest.PostDataToHandler( ... )
   """
   try:
-    yield
-  except UnknownExtraConf as e:
-    if vimsupport.Confirm( str( e ) ):
-      _LoadExtraConfFile( e.extra_conf_file )
-    else:
-      _IgnoreExtraConfFile( e.extra_conf_file )
+    try:
+      yield
+    except UnknownExtraConf as e:
+      if vimsupport.Confirm( str( e ) ):
+        _LoadExtraConfFile( e.extra_conf_file )
+      else:
+        _IgnoreExtraConfFile( e.extra_conf_file )
+  except BaseRequest.Requests().exceptions.ConnectionError:
+    # We don't display this exception to the user since it is likely to happen
+    # for each subsequent request (typically if the server crashed) and we
+    # don't want to spam the user with it.
+    _logger.exception( 'Unable to connect to server' )
   except Exception as e:
     _logger.exception( 'Error while handling server response' )
     if display:
@@ -260,33 +261,7 @@ def _ValidateResponseObject( response ):
 
 
 def _BuildUri( handler ):
-  return native( ToBytes( urllib.parse.urljoin( BaseRequest.server_location,
-                                                handler ) ) )
-
-
-SERVER_HEALTHY = False
-
-
-def _CheckServerIsHealthyWithCache():
-  global SERVER_HEALTHY
-
-  def _ServerIsHealthy():
-    request_uri = _BuildUri( 'healthy' )
-    response = requests.get( request_uri,
-                             headers = BaseRequest._ExtraHeaders(
-                                 'GET', request_uri, bytes( b'' ) ) )
-    _ValidateResponseObject( response )
-    response.raise_for_status()
-    return response.json()
-
-  if SERVER_HEALTHY:
-    return True
-
-  try:
-    SERVER_HEALTHY = _ServerIsHealthy()
-    return SERVER_HEALTHY
-  except:
-    return False
+  return native( ToBytes( urljoin( BaseRequest.server_location, handler ) ) )
 
 
 def MakeServerException( data ):

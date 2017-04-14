@@ -20,8 +20,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
+# Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
 from future.utils import iterkeys
@@ -184,8 +183,8 @@ def PlaceSign( sign_id, line_num, buffer_num, is_error = True ):
     line_num = 1
 
   sign_name = 'YcmError' if is_error else 'YcmWarning'
-  vim.command( 'sign place {0} line={1} name={2} buffer={3}'.format(
-    sign_id, line_num, sign_name, buffer_num ) )
+  vim.command( 'sign place {0} name={1} line={2} buffer={3}'.format(
+    sign_id, sign_name, line_num, buffer_num ) )
 
 
 def PlaceDummySign( sign_id, buffer_num, line_num ):
@@ -261,24 +260,45 @@ def LineAndColumnNumbersClamped( line_num, column_num ):
 
 
 def SetLocationList( diagnostics ):
-  """Diagnostics should be in qflist format; see ":h setqflist" for details."""
+  """Populate the location list with diagnostics. Diagnostics should be in
+  qflist format; see ":h setqflist" for details."""
   vim.eval( 'setloclist( 0, {0} )'.format( json.dumps( diagnostics ) ) )
 
 
-def SetQuickFixList( quickfix_list, focus = False, autoclose = False ):
+def OpenLocationList( focus = False, autoclose = False ):
+  """Open the location list to full width at the bottom of the screen with its
+  height automatically set to fit all entries. This behavior can be overridden
+  by using the YcmLocationOpened autocommand. When focus is set to True, the
+  location list window becomes the active window. When autoclose is set to True,
+  the location list window is automatically closed after an entry is
+  selected."""
+  vim.command( 'botright lopen' )
+
+  SetFittingHeightForCurrentWindow()
+
+  if autoclose:
+    # This autocommand is automatically removed when the location list window is
+    # closed.
+    vim.command( 'au WinLeave <buffer> q' )
+
+  if VariableExists( '#User#YcmLocationOpened' ):
+    vim.command( 'doautocmd User YcmLocationOpened' )
+
+  if not focus:
+    JumpToPreviousWindow()
+
+
+def SetQuickFixList( quickfix_list ):
   """Populate the quickfix list and open it. List should be in qflist format:
-  see ":h setqflist" for details. When focus is set to True, the quickfix
-  window becomes the active window. When autoclose is set to True, the quickfix
-  window is automatically closed after an entry is selected."""
+  see ":h setqflist" for details."""
   vim.eval( 'setqflist( {0} )'.format( json.dumps( quickfix_list ) ) )
-  OpenQuickFixList( focus, autoclose )
 
 
 def OpenQuickFixList( focus = False, autoclose = False ):
   """Open the quickfix list to full width at the bottom of the screen with its
   height automatically set to fit all entries. This behavior can be overridden
   by using the YcmQuickFixOpened autocommand.
-  See the SetQuickFixList function for the focus and autoclose options."""
+  See the OpenLocationList function for the focus and autoclose options."""
   vim.command( 'botright copen' )
 
   SetFittingHeightForCurrentWindow()
@@ -748,6 +768,7 @@ def ReplaceChunks( chunks ):
   # Open the quickfix list, populated with entries for each location we changed.
   if locations:
     SetQuickFixList( locations )
+    OpenQuickFixList()
 
   PostVimMessage( 'Applied {0} changes'.format( len( chunks ) ),
                   warning = False )
@@ -1047,4 +1068,4 @@ def _SetUpLoadedBuffer( command, filename, fix, position, watch ):
                  .format( filename ) )
 
   if position == 'end':
-    vim.command( 'silent! normal G zz' )
+    vim.command( 'silent! normal! Gzz' )

@@ -19,8 +19,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
+# Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
 from future.utils import itervalues, iteritems
@@ -99,8 +98,9 @@ class DiagnosticInterface( object ):
         self._diag_message_needs_clearing = False
       return
 
-    text = diags[ 0 ][ 'text' ]
-    if diags[ 0 ].get( 'fixit_available', False ):
+    first_diag = diags[ 0 ]
+    text = first_diag[ 'text' ]
+    if first_diag.get( 'fixit_available', False ):
       text += ' (FixIt)'
 
     vimsupport.PostVimMessage( text, warning = False, truncate = True )
@@ -179,11 +179,12 @@ class DiagnosticInterface( object ):
         location_extent = diag[ 'location_extent' ]
         is_error = _DiagnosticIsError( diag )
 
-        if location_extent[ 'start' ][ 'line_num' ] < 0:
+        if location_extent[ 'start' ][ 'line_num' ] <= 0:
           location = diag[ 'location' ]
           vimsupport.AddDiagnosticSyntaxMatch(
               location[ 'line_num' ],
-              location[ 'column_num' ] )
+              location[ 'column_num' ],
+              is_error = is_error )
         else:
           vimsupport.AddDiagnosticSyntaxMatch(
             location_extent[ 'start' ][ 'line_num' ],

@@ -19,8 +19,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
+# Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
 from ycm.tests.test_utils import ( MockVimModule, MockVimBuffers, VimBuffer )
@@ -32,13 +31,19 @@ from mock import patch
 from ycm.tests import YouCompleteMeInstance
 
 
-@YouCompleteMeInstance()
+@YouCompleteMeInstance( { 'extra_conf_vim_data': [ 'tempname()' ] } )
 def SendCommandRequest_test( ycm ):
   current_buffer = VimBuffer( 'buffer' )
   with MockVimBuffers( [ current_buffer ], current_buffer ):
+    with patch( 'ycm.youcompleteme.SendCommandRequest' ) as send_request:
+      ycm.SendCommandRequest( [ 'GoTo' ], 'python' )
+      send_request.assert_called_once_with(
+        [ 'GoTo' ], 'python', { 'extra_conf_data': {
+          'tempname()': '_TEMP_FILE_' } }
+      )
     with patch( 'ycm.client.base_request.JsonFromFuture',
                 return_value = 'Some response' ):
       assert_that(
-        ycm.SendCommandRequest( 'GoTo', 'python' ),
+        ycm.SendCommandRequest( [ 'GoTo' ], 'python' ),
         equal_to( 'Some response' )
       )
