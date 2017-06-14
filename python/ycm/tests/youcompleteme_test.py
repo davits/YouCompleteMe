@@ -546,8 +546,10 @@ def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
     vim_command.reset_mock()
     with patch( 'ycm.client.event_notification.EventNotification.Response',
                 return_value = diagnostics[ 1 : ] ):
-      ycm.OnFileReadyToParse()
-      ycm.HandleFileParseRequest( block = True )
+      with patch( 'ycm.buffer.Buffer.OngoingParseRequest',
+                  return_value = False ):
+        ycm.OnFileReadyToParse()
+        ycm.HandleFileParseRequest( block = True )
 
     assert_that(
       test_utils.VIM_MATCHES,

@@ -38,6 +38,7 @@ from ycm.buffer import BufferDict
 from ycmd import utils
 from ycmd import server_utils
 from ycmd.request_wrap import RequestWrap
+from ycmd.responses import ServerError
 from ycm.omni_completer import OmniCompleter
 from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
