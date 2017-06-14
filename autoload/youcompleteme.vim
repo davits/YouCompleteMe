@@ -498,7 +498,13 @@ function! s:PollFileParseResponse( ... )
     return
   endif
 
-  exec s:python_command "ycm_state.HandleFileParseRequest()"
+  " If something has changed during the parse, start over.
+  " This is most likely going to happen during initial parse.
+  if s:Pyeval( "ycm_state.NeedsReparse()" )
+    call s:OnFileReadyToParse()
+  else
+    exec s:python_command "ycm_state.HandleFileParseRequest()"
+  endif
 endfunction
 
 
