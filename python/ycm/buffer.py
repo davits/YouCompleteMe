@@ -19,8 +19,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
+# Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
 from ycm import vimsupport
@@ -28,6 +27,10 @@ from ycm.client.event_notification import EventNotification
 from ycm.diagnostic_interface import DiagnosticInterface
 
 
+# Emulates Vim buffer
+# Used to store buffer related information like diagnostics, latest parse
+# request. Stores buffer change tick at the parse request moment, allowing
+# to effectively determine whether reparse is needed for the buffer.
 class Buffer( object ):
 
   def __init__( self, bufnr, user_options ):
@@ -39,23 +42,31 @@ class Buffer( object ):
 
 
   def FileParseRequestReady( self, block = False ):
-    return self._parse_tick == 0 or block or self._parse_request.Done()
+    return bool( self._parse_request and
+                 ( block or self._parse_request.Done() ) )
+
+
+  def OngoingParseRequest( self ):
+    return bool( self._parse_request and not self._parse_request.Done() )
 
 
   def SendParseRequest( self, extra_data ):
     self._parse_request = EventNotification( 'FileReadyToParse',
                                              extra_data = extra_data )
     self._parse_request.Start()
+    # Decrement handled tick to ensure correct handling when we are forcing
+    # reparse on buffer visit and changed tick remains the same.
+    self._handled_tick -= 1
     self._parse_tick = self._ChangedTick()
 
 
   def NeedsReparse( self ):
-    return self._parse_tick < self._ChangedTick()
+    return self._parse_tick != self._ChangedTick()
 
 
   def UpdateDiagnostics( self ):
-    diagnostics = self._parse_request.Response()
-    self._diag_interface.UpdateWithNewDiagnostics( diagnostics )
+    self._diag_interface.UpdateWithNewDiagnostics(
+      self._parse_request.Response() )
 
 
   def PopulateLocationList( self ):
@@ -87,7 +98,7 @@ class Buffer( object ):
 
 
   def _ChangedTick( self ):
-    return vimsupport.GetBufferChangeTick(self.number)
+    return vimsupport.GetBufferChangedTick( self.number )
 
 
 class BufferDict( dict ):
@@ -97,5 +108,6 @@ class BufferDict( dict ):
 
 
   def __missing__( self, key ):
-    value = self[ key ] = Buffer( key, self._user_options )
-    return value
+    # Python does not allow to return assignment operation result directly
+    new_value = self[ key ] = Buffer( key, self._user_options )
+    return new_value

@@ -28,7 +28,6 @@ import base64
 import json
 import logging
 import os
-import re
 import signal
 import vim
 from subprocess import PIPE
@@ -39,7 +38,6 @@ from ycm.buffer import BufferDict
 from ycmd import utils
 from ycmd import server_utils
 from ycmd.request_wrap import RequestWrap
-from ycmd.responses import ServerError
 from ycm.omni_completer import OmniCompleter
 from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
@@ -100,7 +98,7 @@ CORE_PYTHON3_MESSAGE = (
 CORE_OUTDATED_MESSAGE = (
   'YCM core library too old; PLEASE RECOMPILE by running the install.py '
   'script. See the documentation for more details.' )
-SERVER_IDLE_SUICIDE_SECONDS = 10800  # 3 hours
+SERVER_IDLE_SUICIDE_SECONDS = 1800  # 30 minutes
 DIAGNOSTIC_UI_FILETYPES = set( [ 'cpp', 'cs', 'c', 'objc', 'objcpp',
                                  'typescript' ] )
 CLIENT_LOGFILE_FORMAT = 'ycm_'
@@ -118,7 +116,6 @@ class YouCompleteMe( object ):
     self._user_notified_about_crash = False
     self._omnicomp = OmniCompleter( user_options )
     self._buffers = BufferDict( user_options )
-    self._buffer = None
     self._latest_completion_request = None
     self._logger = logging.getLogger( 'ycm' )
     self._client_logfile = None
@@ -135,10 +132,6 @@ class YouCompleteMe( object ):
       'cs': lambda self: self._OnCompleteDone_Csharp()
     }
     self._file_parse_ready_callbacks = []
-
-
-  def _GetCurrentBuffer( self ):
-    return self._buffers[ vimsupport.GetCurrentBufferNumber() ]
 
 
   def _SetupServer( self ):
@@ -227,6 +220,18 @@ class YouCompleteMe( object ):
     return_code = self._server_popen.poll()
     # When the process hasn't finished yet, poll() returns None.
     return return_code is None
+
+
+  def CheckIfServerIsReady( self ):
+    if not self._server_is_ready_with_cache and self.IsServerAlive():
+      with HandleServerException( display = False ):
+        self._server_is_ready_with_cache = BaseRequest.GetDataFromHandler(
+            'ready' )
+    return self._server_is_ready_with_cache
+
+
+  def IsServerReady( self ):
+    return self._server_is_ready_with_cache
 
 
   def _NotifyUserIfServerCrashed( self ):
@@ -352,47 +357,35 @@ class YouCompleteMe( object ):
              self.NativeFiletypeCompletionAvailable() )
 
 
-  def ServerBecomesReady( self ):
-    if not self._server_is_ready_with_cache:
-      with HandleServerException( display = False ):
-        self._server_is_ready_with_cache = BaseRequest.GetDataFromHandler(
-            'ready' )
-      return self._server_is_ready_with_cache
-    return False
+  def NeedsReparse( self ):
+    return self.CurrentBuffer().NeedsReparse()
 
 
-  def IsServerReady( self ):
-    return self._server_is_ready_with_cache
-
-
-  def OnFileReadyToParse( self, block = False ):
+  def OnFileReadyToParse( self ):
     if not self.IsServerAlive():
       self._NotifyUserIfServerCrashed()
       return
 
-    self._omnicomp.OnFileReadyToParse( None )
-
-    self._buffer = self._GetCurrentBuffer()
-
     if not self.IsServerReady():
       return
 
+    current_buffer = self.CurrentBuffer()
+
     # Do nothing if previous parse request is not finished
     # it will return 'already parsing' anyway.
-    if not self._buffer.FileParseRequestReady( block ):
+    # This is specific to semantic highlighting fork.
+    # Better solution to be provided on the ycmd side.
+    if current_buffer.OngoingParseRequest():
       return
 
-    self.HandleFileParseResponse()
+    self._omnicomp.OnFileReadyToParse( None )
 
-    if self._buffer.NeedsReparse():
-      extra_data = {}
-      self._AddTagsFilesIfNeeded( extra_data )
-      self._AddSyntaxDataIfNeeded( extra_data )
-      self._AddExtraConfDataIfNeeded( extra_data )
+    extra_data = {}
+    self._AddTagsFilesIfNeeded( extra_data )
+    self._AddSyntaxDataIfNeeded( extra_data )
+    self._AddExtraConfDataIfNeeded( extra_data )
 
-      self._buffer.SendParseRequest( extra_data )
-      if block:
-        self.HandleFileParseResponse()
+    current_buffer.SendParseRequest( extra_data )
 
 
   def OnBufferUnload( self, deleted_buffer_file ):
@@ -405,12 +398,16 @@ class YouCompleteMe( object ):
     SendEventNotificationAsync( 'BufferVisit', extra_data = extra_data )
 
 
+  def CurrentBuffer( self ):
+    return self._buffers[ vimsupport.GetCurrentBufferNumber() ]
+
+
   def OnInsertLeave( self ):
     SendEventNotificationAsync( 'InsertLeave' )
 
 
   def OnCursorMoved( self ):
-    self._buffer.OnCursorMoved()
+    self.CurrentBuffer().OnCursorMoved()
 
 
   def _CleanLogfile( self ):
@@ -466,31 +463,6 @@ class YouCompleteMe( object ):
 
 
   def _FilterToMatchingCompletions( self, completions, full_match_only ):
-    self._PatchBasedOnVimVersion()
-    return self._FilterToMatchingCompletions( completions, full_match_only)
-
-
-  def _HasCompletionsThatCouldBeCompletedWithMoreText( self, completions ):
-    self._PatchBasedOnVimVersion()
-    return self._HasCompletionsThatCouldBeCompletedWithMoreText( completions )
-
-
-  def _PatchBasedOnVimVersion( self ):
-    if vimsupport.VimVersionAtLeast( "7.4.774" ):
-      self._HasCompletionsThatCouldBeCompletedWithMoreText = \
-        self._HasCompletionsThatCouldBeCompletedWithMoreText_NewerVim
-      self._FilterToMatchingCompletions = \
-        self._FilterToMatchingCompletions_NewerVim
-    else:
-      self._FilterToMatchingCompletions = \
-        self._FilterToMatchingCompletions_OlderVim
-      self._HasCompletionsThatCouldBeCompletedWithMoreText = \
-        self._HasCompletionsThatCouldBeCompletedWithMoreText_OlderVim
-
-
-  def _FilterToMatchingCompletions_NewerVim( self,
-                                             completions,
-                                             full_match_only ):
     """Filter to completions matching the item Vim said was completed"""
     completed = vimsupport.GetVariableValue( 'v:completed_item' )
     for completion in completions:
@@ -506,24 +478,7 @@ class YouCompleteMe( object ):
         yield completion
 
 
-  def _FilterToMatchingCompletions_OlderVim( self, completions,
-                                             full_match_only ):
-    """ Filter to completions matching the buffer text """
-    if full_match_only:
-      return # Only supported in 7.4.774+
-    # No support for multiple line completions
-    text = vimsupport.TextBeforeCursor()
-    for completion in completions:
-      word = completion[ "insertion_text" ]
-      # Trim complete-ending character if needed
-      text = re.sub( r"[^a-zA-Z0-9_]$", "", text )
-      buffer_text = text[ -1 * len( word ) : ]
-      if buffer_text == word:
-        yield completion
-
-
-  def _HasCompletionsThatCouldBeCompletedWithMoreText_NewerVim( self,
-                                                                completions ):
+  def _HasCompletionsThatCouldBeCompletedWithMoreText( self, completions ):
     completed_item = vimsupport.GetVariableValue( 'v:completed_item' )
     if not completed_item:
       return False
@@ -547,19 +502,6 @@ class YouCompleteMe( object ):
         continue
       if word.startswith( completed_word ):
         return True
-    return False
-
-
-  def _HasCompletionsThatCouldBeCompletedWithMoreText_OlderVim( self,
-                                                                completions ):
-    # No support for multiple line completions
-    text = vimsupport.TextBeforeCursor()
-    for completion in completions:
-      word = utils.ToUnicode(
-          ConvertCompletionDataToVimData( completion )[ 'word' ] )
-      for i in range( 1, len( word ) - 1 ): # Excluding full word
-        if text[ -1 * i : ] == word[ : i ]:
-          return True
     return False
 
 
@@ -592,13 +534,11 @@ class YouCompleteMe( object ):
 
 
   def GetErrorCount( self ):
-    current_buffer = self._buffers[ vim.current.buffer.number ]
-    return current_buffer.GetErrorCount()
+    return self.CurrentBuffer().GetErrorCount()
 
 
   def GetWarningCount( self ):
-    current_buffer = self._buffers[ vim.current.buffer.number ]
-    return current_buffer.GetWarningCount()
+    return self.CurrentBuffer().GetWarningCount()
 
 
   def DiagnosticUiSupportedForCurrentFiletype( self ):
@@ -611,26 +551,30 @@ class YouCompleteMe( object ):
                  self.DiagnosticUiSupportedForCurrentFiletype() )
 
 
-  def PopulateLocationListWithLatestDiagnostics( self ):
-    return self._buffer.PopulateLocationList()
+  def _PopulateLocationListWithLatestDiagnostics( self ):
+    return self.CurrentBuffer().PopulateLocationList()
 
 
-  # For testing purposes
   def FileParseRequestReady( self ):
-    return self._buffer.FileParseRequestReady()
+    # Return True if server is not ready yet, to stop repeating check timer.
+    return ( not self.IsServerReady() or
+             self.CurrentBuffer().FileParseRequestReady() )
 
 
-  def HandleFileParseResponse( self ):
+  def HandleFileParseRequest( self, block = False ):
     if not self.IsServerReady():
       return
 
-    if self._buffer.IsResponseHandled():
-      return
-
+    current_buffer = self.CurrentBuffer()
+    # Order is important here:
+    # FileParseRequestReady has a low cost, while
     # NativeFiletypeCompletionUsable is a blocking server request
-    if self.NativeFiletypeCompletionUsable():
+    if ( not current_buffer.IsResponseHandled() and
+         current_buffer.FileParseRequestReady( block ) and
+         self.NativeFiletypeCompletionUsable() ):
+
       if self.ShouldDisplayDiagnostics():
-        self._buffer.UpdateDiagnostics()
+        current_buffer.UpdateDiagnostics()
       else:
         # YCM client has a hard-coded list of filetypes which are known
         # to support diagnostics, self.DiagnosticUiSupportedForCurrentFiletype()
@@ -639,11 +583,19 @@ class YouCompleteMe( object ):
         # the _latest_file_parse_request for any exception or UnknownExtraConf
         # response, to allow the server to raise configuration warnings, etc.
         # to the user. We ignore any other supplied data.
-        self._buffer.GetResponse()
+        current_buffer.GetResponse()
 
-      self.NotifyFileParseReady( self._buffer.number )
+      self.NotifyFileParseReady( current_buffer.number )
 
-    self._buffer.MarkResponseHandled()
+      # We set the file parse request as handled because we want to prevent
+      # repeated issuing of the same warnings/errors/prompts. Setting this
+      # makes IsRequestHandled return True until the next request is created.
+      #
+      # Note: it is the server's responsibility to determine the frequency of
+      # error/warning/prompts when receiving a FileReadyToParse event, but
+      # it is our responsibility to ensure that we only apply the
+      # warning/error/prompt received once (for each event).
+      current_buffer.MarkResponseHandled()
 
 
   def DebugInfo( self ):
@@ -822,7 +774,8 @@ class YouCompleteMe( object ):
     vimsupport.PostVimMessage(
         'Forcing compilation, this will block Vim until done.',
         warning = False )
-    self.OnFileReadyToParse( True )
+    self.OnFileReadyToParse()
+    self.HandleFileParseRequest( block = True )
     vimsupport.PostVimMessage( 'Diagnostics refreshed', warning = False )
     return True
 
@@ -831,7 +784,7 @@ class YouCompleteMe( object ):
     if not self.ForceCompileAndDiagnostics():
       return
 
-    if not self.PopulateLocationListWithLatestDiagnostics():
+    if not self._PopulateLocationListWithLatestDiagnostics():
       vimsupport.PostVimMessage( 'No warnings or errors detected.',
                                  warning = False )
       return
@@ -847,7 +800,7 @@ class YouCompleteMe( object ):
     if filetype in self._filetypes_with_keywords_loaded:
       return
 
-    if self._server_is_ready_with_cache:
+    if self.IsServerReady():
       self._filetypes_with_keywords_loaded.add( filetype )
     extra_data[ 'syntax_keywords' ] = list(
        syntax_parse.SyntaxKeywordsForCurrentBuffer() )

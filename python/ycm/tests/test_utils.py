@@ -43,7 +43,7 @@ GETBUFVAR_REGEX = re.compile(
   '^getbufvar\((?P<buffer_number>[0-9]+), "(?P<option>.+)"\)$' )
 MATCHADD_REGEX = re.compile(
   '^matchadd\(\'(?P<group>.+)\', \'(?P<pattern>.+)\'\)$' )
-MATCHDELETE_REGEX = re.compile( '^matchdelete\((?P<id>)\)$' )
+MATCHDELETE_REGEX = re.compile( '^matchdelete\((?P<id>\d+)\)$' )
 
 # One-and only instance of mocked Vim object. The first 'import vim' that is
 # executed binds the vim module to the instance of MagicMock that is created,
@@ -139,7 +139,9 @@ def _MockVimOptionsEval( value ):
 
 def _MockVimMatchEval( value ):
   if value == 'getmatches()':
-    return VIM_MATCHES
+    # Returning a copy, because ClearYcmSyntaxMatches() gets the result of
+    # getmatches(), iterates over it and removes elements from VIM_MATCHES.
+    return list( VIM_MATCHES )
 
   match = MATCHADD_REGEX.search( value )
   if match:
@@ -151,7 +153,7 @@ def _MockVimMatchEval( value ):
 
   match = MATCHDELETE_REGEX.search( value )
   if match:
-    identity = match.group( 'id' )
+    identity = int( match.group( 'id' ) )
     for index, vim_match in enumerate( VIM_MATCHES ):
       if vim_match.id == identity:
         VIM_MATCHES.pop( index )
@@ -224,8 +226,7 @@ class VimBuffer( object ):
                       filetype = '',
                       modified = True,
                       window = None,
-                      omnifunc = '',
-                      changedtick = 1):
+                      omnifunc = '' ):
     self.name = os.path.realpath( name ) if name else ''
     self.number = number
     self.contents = contents
@@ -233,7 +234,7 @@ class VimBuffer( object ):
     self.modified = modified
     self.window = window
     self.omnifunc = omnifunc
-    self.changedtick = changedtick
+    self.changedtick = 1
 
 
   def __getitem__( self, index ):
@@ -254,13 +255,6 @@ class VimBuffer( object ):
     return [ ToUnicode( x ) for x in self.contents ]
 
 
-def EmulateCurrentBufferChange():
-  buffer_number = VIM_MOCK.current.buffer.number
-  for vim_buffer in VIM_MOCK.buffers:
-    if vim_buffer.number == buffer_number:
-      vim_buffer.changedtick += 1
-
-
 class VimMatch( object ):
 
   def __init__( self, group, pattern ):
@@ -276,6 +270,13 @@ class VimMatch( object ):
   def __repr__( self ):
     return "VimMatch( group = '{0}', pattern = '{1}' )".format( self.group,
                                                                 self.pattern )
+
+
+  def __getitem__( self, key ):
+    if key == 'group':
+      return self.group
+    elif key == 'id':
+      return self.id
 
 
 @contextlib.contextmanager

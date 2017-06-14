@@ -83,19 +83,6 @@ def TextBeforeCursor():
   return ToUnicode( vim.current.line[ :CurrentColumn() ] )
 
 
-# Expects version_string in 'MAJOR.MINOR.PATCH' format, e.g. '7.4.301'
-def VimVersionAtLeast( version_string ):
-  major, minor, patch = [ int( x ) for x in version_string.split( '.' ) ]
-
-  # For Vim 7.4.301, v:version is '704'
-  actual_major_and_minor = GetIntValue( 'v:version' )
-  matching_major_and_minor = major * 100 + minor
-  if actual_major_and_minor != matching_major_and_minor:
-    return actual_major_and_minor > matching_major_and_minor
-
-  return GetBoolValue( 'has("patch{0}")'.format( patch ) )
-
-
 # Note the difference between buffer OPTIONS and VARIABLES; the two are not
 # the same.
 def GetBufferOption( buffer_object, option ):
@@ -145,14 +132,6 @@ def GetCurrentBufferFilepath():
   return GetBufferFilepath( vim.current.buffer )
 
 
-def GetCurrentBufferNumber():
-  return vim.current.buffer.number
-
-
-def GetBufferChangeTick( bufnr ):
-  return GetIntValue( u'getbufvar({0}, "changedtick")'.format( bufnr ) )
-
-
 def BufferIsVisible( buffer_number ):
   if buffer_number < 0:
     return False
@@ -166,6 +145,14 @@ def GetBufferFilepath( buffer_object ):
   # Buffers that have just been created by a command like :enew don't have any
   # buffer name so we use the buffer number for that.
   return os.path.join( GetCurrentDirectory(), str( buffer_object.number ) )
+
+
+def GetCurrentBufferNumber():
+  return vim.current.buffer.number
+
+
+def GetBufferChangedTick( bufnr ):
+  return GetIntValue( 'getbufvar({0}, "changedtick")'.format( bufnr ) )
 
 
 def UnplaceSignInBuffer( buffer_number, sign_id ):
@@ -185,26 +172,6 @@ def PlaceSign( sign_id, line_num, buffer_num, is_error = True ):
   sign_name = 'YcmError' if is_error else 'YcmWarning'
   vim.command( 'sign place {0} name={1} line={2} buffer={3}'.format(
     sign_id, sign_name, line_num, buffer_num ) )
-
-
-def PlaceDummySign( sign_id, buffer_num, line_num ):
-    if buffer_num < 0 or line_num < 0:
-      return
-    vim.command( 'sign define ycm_dummy_sign' )
-    vim.command(
-      'sign place {0} name=ycm_dummy_sign line={1} buffer={2}'.format(
-        sign_id,
-        line_num,
-        buffer_num,
-      )
-    )
-
-
-def UnPlaceDummySign( sign_id, buffer_num ):
-    if buffer_num < 0:
-      return
-    vim.command( 'sign undefine ycm_dummy_sign' )
-    vim.command( 'sign unplace {0} buffer={1}'.format( sign_id, buffer_num ) )
 
 
 def ClearYcmSyntaxMatches():

@@ -26,7 +26,6 @@ from future.utils import itervalues, iteritems
 from collections import defaultdict, namedtuple
 from ycm import vimsupport
 from ycm.diagnostic_filter import DiagnosticFilter, CompileLevel
-import vim
 
 
 class DiagnosticInterface( object ):
@@ -114,68 +113,18 @@ class DiagnosticInterface( object ):
     return count
 
 
-  def _ConvertDiagListToDict( self ):
-    self._line_to_diags = defaultdict( list )
-    for diag in self._diagnostics:
-      location = diag[ 'location' ]
-      bufnr = vimsupport.GetBufferNumberForFilename( location[ 'filepath' ] )
-      if bufnr != self._bufnr:
-          continue
-      line_number = location[ 'line_num' ]
-      self._line_to_diags[ line_number ].append( diag )
-
-    for diags in itervalues( self._line_to_diags ):
-      # We also want errors to be listed before warnings so that errors aren't
-      # hidden by the warnings; Vim won't place a sign oven an existing one.
-      diags.sort( key = lambda diag: ( diag[ 'kind' ],
-                                       diag[ 'location' ][ 'column_num' ] ) )
-
-
-  def _UpdateSigns( self ):
-    new_signs, obsolete_signs = self._GetNewAndObsoleteSigns()
-
-    self._PlaceNewSigns( new_signs )
-
-    self._UnplaceObsoleteSigns( obsolete_signs )
-
-
-  def _GetNewAndObsoleteSigns( self ):
-    new_signs = []
-    obsolete_signs = self._placed_signs[:]
-    for line, diags in iteritems( self._line_to_diags ):
-      # We always go for the first diagnostic on line,
-      # because it is sorted giving priority to the Errors.
-      diag = diags[ 0 ]
-      sign = _DiagSignPlacement( self._next_sign_id,
-                                 line, _DiagnosticIsError( diag ) )
-      try:
-        obsolete_signs.remove( sign )
-      except ValueError:
-        new_signs.append( sign )
-        self._next_sign_id += 1
-    return new_signs, obsolete_signs
-
-
-  def _PlaceNewSigns( self, new_signs ):
-    for sign in new_signs:
-      vimsupport.PlaceSign( sign.id, sign.line, self._bufnr, sign.is_error )
-      self._placed_signs.append( sign )
-
-
-  def _UnplaceObsoleteSigns( self, obsolete_signs ):
-    for sign in obsolete_signs:
-      self._placed_signs.remove( sign )
-      vimsupport.UnplaceSignInBuffer( self._bufnr, sign.id )
+  def _UpdateLocationList( self ):
+    vimsupport.SetLocationList(
+      vimsupport.ConvertDiagnosticsToQfList( self._diagnostics ) )
 
 
   def _UpdateSquiggles( self ):
-    if self._bufnr != vim.current.buffer.number:
-      return
 
     vimsupport.ClearYcmSyntaxMatches()
 
     for diags in itervalues( self._line_to_diags ):
-      for diag in diags:
+      # Insert squiggles in reverse order so that errors overlap warnings.
+      for diag in reversed( diags ):
         location_extent = diag[ 'location_extent' ]
         is_error = _DiagnosticIsError( diag )
 
@@ -202,9 +151,57 @@ class DiagnosticInterface( object ):
             is_error = is_error )
 
 
-  def _UpdateLocationList( self ):
-    vimsupport.SetLocationList(
-      vimsupport.ConvertDiagnosticsToQfList( self._diagnostics ) )
+  def _UpdateSigns( self ):
+    new_signs, obsolete_signs = self._GetNewAndObsoleteSigns()
+
+    self._PlaceNewSigns( new_signs )
+
+    self._UnplaceObsoleteSigns( obsolete_signs )
+
+
+  def _GetNewAndObsoleteSigns( self ):
+    new_signs = []
+    obsolete_signs = list( self._placed_signs )
+    for line, diags in iteritems( self._line_to_diags ):
+      # We always go for the first diagnostic on line,
+      # because it is sorted giving priority to the Errors.
+      diag = diags[ 0 ]
+      sign = _DiagSignPlacement( self._next_sign_id,
+                                 line, _DiagnosticIsError( diag ) )
+      try:
+        obsolete_signs.remove( sign )
+      except ValueError:
+        new_signs.append( sign )
+        self._next_sign_id += 1
+    return new_signs, obsolete_signs
+
+
+  def _PlaceNewSigns( self, new_signs ):
+    for sign in new_signs:
+      vimsupport.PlaceSign( sign.id, sign.line, self._bufnr, sign.is_error )
+      self._placed_signs.append( sign )
+
+
+  def _UnplaceObsoleteSigns( self, obsolete_signs ):
+    for sign in obsolete_signs:
+      self._placed_signs.remove( sign )
+      vimsupport.UnplaceSignInBuffer( self._bufnr, sign.id )
+
+
+  def _ConvertDiagListToDict( self ):
+    self._line_to_diags = defaultdict( list )
+    for diag in self._diagnostics:
+      location = diag[ 'location' ]
+      bufnr = vimsupport.GetBufferNumberForFilename( location[ 'filepath' ] )
+      if bufnr == self._bufnr:
+        line_number = location[ 'line_num' ]
+        self._line_to_diags[ line_number ].append( diag )
+
+    for diags in itervalues( self._line_to_diags ):
+      # We also want errors to be listed before warnings so that errors aren't
+      # hidden by the warnings; Vim won't place a sign over an existing one.
+      diags.sort( key = lambda diag: ( diag[ 'kind' ],
+                                       diag[ 'location' ][ 'column_num' ] ) )
 
 
 _DiagnosticIsError = CompileLevel( 'error' )
