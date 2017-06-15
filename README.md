@@ -2,7 +2,7 @@ YouCompleteMe: a code-completion engine for Vim
 ===============================================
 
 [![Build Status](https://travis-ci.org/davits/YouCompleteMe.svg?branch=master)](https://travis-ci.org/davits/YouCompleteMe)
-[![Build status](https://ci.appveyor.com/api/projects/status/ag9uqwi8s6btwjd8/branch/master?svg=true)](https://ci.appveyor.com/project/davits/YouCompleteMe)
+[![Build status](https://ci.appveyor.com/api/projects/status/lvyn88newo8f01jc?svg=true)](https://ci.appveyor.com/project/davits/YouCompleteMe)
 [![Coverage Status](https://codecov.io/gh/davits/YouCompleteMe/branch/master/graph/badge.svg)](https://codecov.io/gh/davits/YouCompleteMe)
 
 - [Intro](#intro)
