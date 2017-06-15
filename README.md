@@ -1,10 +1,9 @@
 YouCompleteMe: a code-completion engine for Vim
 ===============================================
 
-[![Gitter Room](https://img.shields.io/gitter/room/Valloric/YouCompleteMe.svg)](https://gitter.im/Valloric/YouCompleteMe)
-[![Build Status](https://travis-ci.org/Valloric/YouCompleteMe.svg?branch=master)](https://travis-ci.org/Valloric/YouCompleteMe)
-[![Build status](https://ci.appveyor.com/api/projects/status/ag9uqwi8s6btwjd8/branch/master?svg=true)](https://ci.appveyor.com/project/Valloric/YouCompleteMe)
-[![Coverage Status](https://codecov.io/gh/Valloric/YouCompleteMe/branch/master/graph/badge.svg)](https://codecov.io/gh/Valloric/YouCompleteMe)
+[![Build Status](https://travis-ci.org/davits/YouCompleteMe.svg?branch=master)](https://travis-ci.org/davits/YouCompleteMe)
+[![Build status](https://ci.appveyor.com/api/projects/status/ag9uqwi8s6btwjd8/branch/master?svg=true)](https://ci.appveyor.com/project/davits/YouCompleteMe)
+[![Coverage Status](https://codecov.io/gh/davits/YouCompleteMe/branch/master/graph/badge.svg)](https://codecov.io/gh/davits/YouCompleteMe)
 
 - [Intro](#intro)
 - [Installation](#installation)
@@ -228,7 +227,7 @@ using Vundle and the ycm_core library APIs have changed (happens
 rarely), YCM will notify you to recompile it. You should then rerun the install
 process.
 
-Install development tools and CMake: 
+Install development tools and CMake:
 
     sudo apt-get install build-essential cmake
 
@@ -531,7 +530,7 @@ process.
 
 2.  **Install YCM** with [Vundle][] (or [Pathogen][], but Vundle is a better
     idea). With Vundle, this would mean adding a `Plugin
-    'Valloric/YouCompleteMe'` line to your [vimrc][].
+    'davits/YouCompleteMe'` line to your [vimrc][].
 
     If you don't install YCM with Vundle, make sure you have run
     `git submodule update --init --recursive` after checking out the YCM
@@ -1943,14 +1942,14 @@ delimited by commas and values are dictionaries describing the filter.
 A filter is a dictionary of key-values, where the keys are the type of filter,
 and the value is a list of arguments to that filter. In the case of just a
 single item in the list, you may omit the brackets and just provide the argument
-directly. If any filter matches a diagnostic, it will be dropped and YCM will 
+directly. If any filter matches a diagnostic, it will be dropped and YCM will
 not render it.
 
 The following filter types are supported:
 
 - "regex": Accepts a string [regular expression][python-re]. This type matches
 when the regex (treated as case-insensitive) is found in the diagnostic text.
-- "level": Accepts a string level, either "warning" or "error." This type 
+- "level": Accepts a string level, either "warning" or "error." This type
 matches when the diagnostic has the same level.
 
 **NOTE:** The regex syntax is **NOT** Vim's, it's [Python's][python-re].
@@ -3029,7 +3028,7 @@ License
 This software is licensed under the [GPL v3 license][gpl].
 © 2015-2017 YouCompleteMe contributors
 
-[ycmd]: https://github.com/Valloric/ycmd
+[ycmd]: https://github.com/davits/ycmd
 [Clang]: http://clang.llvm.org/
 [vundle]: https://github.com/VundleVim/Vundle.vim#about
 [pathogen]: https://github.com/tpope/vim-pathogen#pathogenvim
@@ -3042,15 +3041,15 @@ This software is licensed under the [GPL v3 license][gpl].
 [vim]: http://www.vim.org/
 [syntastic]: https://github.com/scrooloose/syntastic
 [lightline]: https://github.com/itchyny/lightline.vim
-[flags_example]: https://github.com/Valloric/ycmd/blob/master/cpp/ycm/.ycm_extra_conf.py
+[flags_example]: https://github.com/davits/ycmd/blob/master/cpp/ycm/.ycm_extra_conf.py
 [compdb]: http://clang.llvm.org/docs/JSONCompilationDatabase.html
 [subsequence]: https://en.wikipedia.org/wiki/Subsequence
-[listtoggle]: https://github.com/Valloric/ListToggle
-[vim-build]: https://github.com/Valloric/YouCompleteMe/wiki/Building-Vim-from-source
-[tracker]: https://github.com/Valloric/YouCompleteMe/issues?state=open
-[issue18]: https://github.com/Valloric/YouCompleteMe/issues/18
+[listtoggle]: https://github.com/davits/ListToggle
+[vim-build]: https://github.com/davits/YouCompleteMe/wiki/Building-Vim-from-source
+[tracker]: https://github.com/davits/YouCompleteMe/issues?state=open
+[issue18]: https://github.com/davits/YouCompleteMe/issues/18
 [delimitMate]: https://github.com/Raimondi/delimitMate
-[completer-api]: https://github.com/Valloric/ycmd/blob/master/ycmd/completers/completer.py
+[completer-api]: https://github.com/davits/ycmd/blob/master/ycmd/completers/completer.py
 [eclim]: http://eclim.org/
 [jedi]: https://github.com/davidhalter/jedi
 [ultisnips]: https://github.com/SirVer/ultisnips/blob/master/doc/UltiSnips.txt
@@ -3059,13 +3058,13 @@ This software is licensed under the [GPL v3 license][gpl].
 [vundle-bug]: https://github.com/VundleVim/Vundle.vim/issues/48
 [ycm-users]: https://groups.google.com/forum/?hl=en#!forum/ycm-users
 [omnisharp]: https://github.com/OmniSharp/omnisharp-server
-[issue-303]: https://github.com/Valloric/YouCompleteMe/issues/303
-[issue-593]: https://github.com/Valloric/YouCompleteMe/issues/593
-[issue-669]: https://github.com/Valloric/YouCompleteMe/issues/669
+[issue-303]: https://github.com/davits/YouCompleteMe/issues/303
+[issue-593]: https://github.com/davits/YouCompleteMe/issues/593
+[issue-669]: https://github.com/davits/YouCompleteMe/issues/669
 [status-mes]: https://groups.google.com/forum/#!topic/vim_dev/WeBBjkXE8H8
 [python-re]: https://docs.python.org/2/library/re.html#regular-expression-syntax
 [Bear]: https://github.com/rizsotto/Bear
-[Options]: https://github.com/Valloric/YouCompleteMe#options
+[Options]: https://github.com/davits/YouCompleteMe#options
 [ygen]: https://github.com/rdnetto/YCM-Generator
 [Gocode]: https://github.com/nsf/gocode
 [Godef]: https://github.com/Manishearth/godef
@@ -3088,10 +3087,10 @@ This software is licensed under the [GPL v3 license][gpl].
 [rust-src]: https://www.rust-lang.org/downloads.html
 [add-msbuild-to-path]: http://stackoverflow.com/questions/6319274/how-do-i-run-msbuild-from-the-command-line-using-windows-sdk-7-1
 [identify-R6034-cause]: http://stackoverflow.com/questions/14552348/runtime-error-r6034-in-embedded-python-application/34696022
-[ccoc]: https://github.com/Valloric/YouCompleteMe/blob/master/CODE_OF_CONDUCT.md
+[ccoc]: https://github.com/davits/YouCompleteMe/blob/master/CODE_OF_CONDUCT.md
 [JediHTTP]: https://github.com/vheon/JediHTTP
 [vim_win-python2.7.11-bug]: https://github.com/vim/vim/issues/717
 [vim_win-python2.7.11-bug_workaround]: https://github.com/vim/vim-win32-installer/blob/a27bbdba9bb87fa0e44c8a00d33d46be936822dd/appveyor.bat#L86-L88
-[gitter]: https://gitter.im/Valloric/YouCompleteMe
+[gitter]: https://gitter.im/davits/YouCompleteMe
 [ninja-compdb]: https://ninja-build.org/manual.html
 [vim-nerdtree-tabs]: https://github.com/jistr/vim-nerdtree-tabs
