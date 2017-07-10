@@ -29,8 +29,8 @@ import os
 import json
 import re
 from collections import defaultdict
-from ycmd.utils import ( GetCurrentDirectory, JoinLinesAsUnicode, ToBytes,
-                         ToUnicode )
+from ycmd.utils import ( ByteOffsetToCodepointOffset, GetCurrentDirectory,
+                         JoinLinesAsUnicode, ToBytes, ToUnicode )
 from ycmd import user_options_store
 
 BUFFER_COMMAND_MAP = { 'same-buffer'      : 'edit',
@@ -56,6 +56,12 @@ def CurrentLineAndColumn():
   return line, column
 
 
+def SetCurrentLineAndColumn( line, column ):
+  """Sets the cursor position to the 0-based line and 0-based column."""
+  # Line from vim.current.window.cursor is 1-based.
+  vim.current.window.cursor = ( line + 1, column )
+
+
 def CurrentColumn():
   """Returns the 0-based current column. Do NOT access the CurrentColumn in
   vim.current.line. It doesn't exist yet when the cursor is at the end of the
@@ -71,6 +77,17 @@ def CurrentColumn():
 
 def CurrentLineContents():
   return ToUnicode( vim.current.line )
+
+
+def CurrentLineContentsAndCodepointColumn():
+  """Returns the line contents as a unicode string and the 0-based current
+  column as a codepoint offset. If the current column is outside the line,
+  returns the column position at the end of the line."""
+  line = CurrentLineContents()
+  byte_column = CurrentColumn()
+  # ByteOffsetToCodepointOffset expects 1-based offset.
+  column = ByteOffsetToCodepointOffset( line, byte_column + 1 ) - 1
+  return line, column
 
 
 def TextAfterCursor():
@@ -141,7 +158,7 @@ def BufferIsVisible( buffer_number ):
 
 def GetBufferFilepath( buffer_object ):
   if buffer_object.name:
-    return buffer_object.name
+    return ToUnicode( buffer_object.name )
   # Buffers that have just been created by a command like :enew don't have any
   # buffer name so we use the buffer number for that.
   return os.path.join( GetCurrentDirectory(), str( buffer_object.number ) )
@@ -344,7 +361,9 @@ def VimExpressionToPythonType( vim_expression ):
 
 
 def HiddenEnabled( buffer_object ):
-  return bool( int( GetBufferOption( buffer_object, 'hid' ) ) )
+  if GetBufferOption( buffer_object, 'bh' ) == "hide":
+    return True
+  return GetBoolValue( '&hidden' )
 
 
 def BufferIsUsable( buffer_object ):
@@ -361,7 +380,7 @@ def TryJumpLocationInOpenedTab( filename, line, column ):
 
   for tab in vim.tabpages:
     for win in tab.windows:
-      if win.buffer.name == filepath:
+      if GetBufferFilepath( win.buffer ) == filepath:
         vim.current.tabpage = tab
         vim.current.window = win
         vim.current.window.cursor = ( line, column - 1 )
