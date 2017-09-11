@@ -45,7 +45,7 @@ from ycm.client.ycmd_keepalive import YcmdKeepalive
 from ycm.client.base_request import ( BaseRequest, BuildRequestData,
                                       HandleServerException )
 from ycm.client.completer_available_request import SendCompleterAvailableRequest
-from ycm.client.command_request import SendCommandRequest
+from ycm.client.command_request import SendCommandRequest, SendGetTypeRequest
 from ycm.client.completion_request import ( CompletionRequest,
                                             ConvertCompletionDataToVimData )
 from ycm.client.debug_info_request import ( SendDebugInfoRequest,
@@ -314,6 +314,10 @@ class YouCompleteMe( object ):
     extra_data = {}
     self._AddExtraConfDataIfNeeded( extra_data )
     return SendCommandRequest( arguments, completer, extra_data )
+
+
+  def GetType( self, line, column ):
+      return SendGetTypeRequest( line, column )
 
 
   def GetDefinedSubcommands( self ):

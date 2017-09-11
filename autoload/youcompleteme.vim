@@ -84,6 +84,7 @@ function! youcompleteme#Enable()
   call s:SetUpCpoptions()
   call s:SetUpCompleteopt()
   call s:SetUpKeyMappings()
+  call s:SetUpBalloon()
 
   if g:ycm_show_diagnostics_ui
     call s:TurnOffSyntasticForCFamily()
@@ -444,6 +445,26 @@ function! s:OnCompleteDone()
 endfunction
 
 
+function! youcompleteme#BalloonEval()
+  return s:Pyeval( "ycm_state.GetType(" . v:beval_lnum .", "
+                                      \ . v:beval_col .")" )
+endfunction
+
+function! s:SetUpBalloon()
+  set balloonexpr=youcompleteme#BalloonEval()
+  set balloondelay=1000
+endfunction
+
+
+function! s:EnableBalloonIfSupported()
+  if &ft == 'cpp'
+    set ballooneval
+  else
+    set noballooneval
+  endif
+endfunction
+
+
 function! s:OnFileTypeSet()
   if !s:AllowedToCompleteInCurrentBuffer()
     return
@@ -454,6 +475,8 @@ function! s:OnFileTypeSet()
 
   exec s:python_command "ycm_state.OnBufferVisit()"
   call s:OnFileReadyToParse( 1 )
+
+  call s:EnableBalloonIfSupported()
 endfunction
 
 
@@ -469,6 +492,8 @@ function! s:OnBufferEnter()
   " Last parse may be outdated because of changes from other buffers. Force a
   " new parse.
   call s:OnFileReadyToParse( 1 )
+
+  call s:EnableBalloonIfSupported()
 endfunction
 
 
