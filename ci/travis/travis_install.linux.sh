@@ -3,10 +3,10 @@
 # We can't use sudo, so we have to approximate the behaviour of setting the
 # default system compiler.
 
-mkdir ${HOME}/bin
+mkdir -p ${HOME}/bin
 
-ln -s /usr/bin/g++-4.9 ${HOME}/bin/c++
-ln -s /usr/bin/gcc-4.9 ${HOME}/bin/cc
+ln -s /usr/bin/g++-4.8 ${HOME}/bin/c++
+ln -s /usr/bin/gcc-4.8 ${HOME}/bin/cc
 
 export PATH=${HOME}/bin:${PATH}
 
