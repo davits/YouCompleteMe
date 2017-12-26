@@ -180,16 +180,16 @@ Compiling YCM **without** semantic support for C-family languages:
 The following additional language support options are available:
 
 - C# support: install Mono with [Homebrew][brew] or by downloading the [Mono Mac
-  package][mono-install-osx] and add `--omnisharp-completer` when calling
+  package][mono-install-osx] and add `--cs-completer` when calling
   `./install.py`.
-- Go support: install [Go][go-install] and add `--gocode-completer` when calling
+- Go support: install [Go][go-install] and add `--go-completer` when calling
   `./install.py`.
 - TypeScript support: install [Node.js and npm][npm-install] then install the
   TypeScript SDK with `npm install -g typescript`.
 - JavaScript support: install [Node.js and npm][npm-install] and add
-  `--tern-completer` when calling `./install.py`.
+  `--js-completer` when calling `./install.py`.
 - Rust support: install [Rust][rust-install] and add
-  `--racer-completer` when calling `./install.py`.
+  `--rust-completer` when calling `./install.py`.
 
 To simply compile with everything enabled, there's a `--all` flag.  So, to
 install with all language features, ensure `xbuild`, `go`, `tsserver`, `node`,
@@ -231,6 +231,11 @@ Install development tools and CMake:
 
     sudo apt-get install build-essential cmake
 
+**Note:** On older systems (e.g. Ubuntu 14.04) you may run into compilation 
+issues with `cmake`. Therefore, install the following instead:
+
+    sudo apt-get install build-essential cmake3
+
 Make sure you have Python headers installed:
 
     sudo apt-get install python-dev python3-dev
@@ -247,15 +252,15 @@ Compiling YCM **without** semantic support for C-family languages:
 
 The following additional language support options are available:
 
-- C# support: install [Mono][mono-install-ubuntu] and add `--omnisharp-completer`
+- C# support: install [Mono][mono-install-ubuntu] and add `--cs-completer`
   when calling `./install.py`.
-- Go support: install [Go][go-install] and add `--gocode-completer` when calling
+- Go support: install [Go][go-install] and add `--go-completer` when calling
   `./install.py`.
 - TypeScript support: install [Node.js and npm][npm-install] then install the
   TypeScript SDK with `npm install -g typescript`.
 - JavaScript support: install [Node.js and npm][npm-install] and add
-  `--tern-completer` when calling `./install.py`.
-- Rust support: install [Rust][rust-install] and add `--racer-completer` when
+  `--js-completer` when calling `./install.py`.
+- Rust support: install [Rust][rust-install] and add `--rust-completer` when
   calling `./install.py`.
 
 To simply compile with everything enabled, there's a `--all` flag.  So, to
@@ -314,15 +319,15 @@ Compiling YCM **without** semantic support for C-family languages:
 
 The following additional language support options are available:
 
-- C# support: install [Mono][mono-install-fedora] and add `--omnisharp-completer`
+- C# support: install [Mono][mono-install-fedora] and add `--cs-completer`
   when calling `./install.py`.
-- Go support: install [Go][go-install] and add `--gocode-completer` when calling
+- Go support: install [Go][go-install] and add `--go-completer` when calling
   `./install.py`.
 - TypeScript support: install [Node.js and npm][npm-install] then install the
   TypeScript SDK with `npm install -g typescript`.
 - JavaScript support: install [Node.js and npm][npm-install] and add
-  `--tern-completer` when calling `./install.py`.
-- Rust support: install [Rust][rust-install] and add `--racer-completer` when
+  `--js-completer` when calling `./install.py`.
+- Rust support: install [Rust][rust-install] and add `--rust-completer` when
   calling `./install.py`.
 
 To simply compile with everything enabled, there's a `--all` flag.  So, to
@@ -378,14 +383,22 @@ process.
 Download and install the following software:
 
 - [Python 2 or Python 3][python-win-download]. Be sure to pick the version
-corresponding to your Vim architecture. It is _Windows x86_ for a 32-bit Vim and
-_Windows x86-64_ for a 64-bit Vim. We recommend installing Python 3.
+  corresponding to your Vim architecture. It is _Windows x86_ for a 32-bit Vim 
+  and _Windows x86-64_ for a 64-bit Vim. We recommend installing Python 3. 
+  Additionally, the version of Python you install must match up exactly with 
+  the version of Python that Vim is looking for. Type `:version` and look at the
+  bottom of the page at the list of compiler flags. Look for flags that look 
+  similar to `-DDYNAMIC_PYTHON_DLL=\"python27.dll\"` and 
+  `-DDYNAMIC_PYTHON3_DLL=\"python35.dll\"`. The former indicates that Vim is 
+  looking for Python 2.7 and the latter indicates that Vim is looking for 
+  Python 3.5. You'll need one or the other installed, matching the version 
+  number exactly.
 - [CMake][cmake-download]. Add CMake executable to the PATH environment
 variable.
 - [Visual Studio][visual-studio-download]. Download the community edition.
 During setup, select _Desktop development with C++_ in _Workloads_.
-- [7-zip][7z-download]. Required to build YCM with semantic support for
-C-family languages.
+- [7-zip 16.04 or later][7z-download]. Required to build YCM with semantic
+support for C-family languages.
 
 Compiling YCM **with** semantic support for C-family languages:
 
@@ -399,15 +412,15 @@ Compiling YCM **without** semantic support for C-family languages:
 
 The following additional language support options are available:
 
-- C# support: add `--omnisharp-completer` when calling `install.py`.
+- C# support: add `--cs-completer` when calling `install.py`.
   Be sure that [the build utility `msbuild` is in your PATH][add-msbuild-to-path].
-- Go support: install [Go][go-install] and add `--gocode-completer` when calling
+- Go support: install [Go][go-install] and add `--go-completer` when calling
   `install.py`.
 - TypeScript support: install [Node.js and npm][npm-install] then install the
   TypeScript SDK with `npm install -g typescript`.
 - JavaScript support: install [Node.js and npm][npm-install] and add
-  `--tern-completer` when calling `install.py`.
-- Rust support: install [Rust][rust-install] and add `--racer-completer` when
+  `--js-completer` when calling `install.py`.
+- Rust support: install [Rust][rust-install] and add `--rust-completer` when
   calling `install.py`.
 
 To simply compile with everything enabled, there's a `--all` flag.  So, to
@@ -470,15 +483,15 @@ Compiling YCM **without** semantic support for C-family languages:
 
 The following additional language support options are available:
 
-- C# support: install Mono and add `--omnisharp-completer` when calling
+- C# support: install Mono and add `--cs-completer` when calling
   `./install.py`.
-- Go support: install [Go][go-install] and add `--gocode-completer` when calling
+- Go support: install [Go][go-install] and add `--go-completer` when calling
   `./install.py`.
 - TypeScript support: install [Node.js and npm][npm-install] then install the
   TypeScript SDK with `npm install -g typescript`.
 - JavaScript support: install [Node.js and npm][npm-install] and add
-  `--tern-completer` when calling `./install.py`.
-- Rust support: install [Rust][rust-install] and add `--racer-completer` when
+  `--js-completer` when calling `./install.py`.
+- Rust support: install [Rust][rust-install] and add `--rust-completer` when
   calling `./install.py`.
 
 To simply compile with everything enabled, there's a `--all` flag.  So, to
@@ -958,38 +971,36 @@ your file.
 
 #### Quick start
 
-1. Ensure that you have enabled the Tern completer. See the
+1. Ensure that you have enabled the JavaScript completer. See the
    [installation guide](#installation) for details.
 
 2. Create a `.tern-project` file in the root directory of your JavaScript
    project, by following the [instructions][tern-project] in the [Tern][]
    documentation.
 
-3. Make sure that Vim's working directory is a descendent of that directory (or
-   that directory itself) when working with JavaScript files.
+3. Edit a file from your project.
 
 #### Explanation
 
 JavaScript completion is based on [Tern][]. This completion engine requires a
 file named [`.tern-project`][tern-project] to exist in the current working
 directory or a directory which is an ancestor of the current working directory
-when the tern server is started. YCM starts the Tern server the first time a
-JavaScript file is edited, so Vim's working directory at that time needs to be a
-descendent of the directory containing the `.tern-project` file (or that
-directory itself).
+when the Tern server is started. YCM starts the Tern server the first time a
+JavaScript file is edited and uses its directory as the working directory, so
+the directory of that file at that time needs to be a descendent of the
+directory containing the `.tern-project` file (or that directory itself).
 
 Alternatively, as described in the [Tern documentation][tern-docs], a global
 `.tern-config` file may be used.
 
-Multiple Tern servers, are not supported. To switch to a different
-JavaScript project, you can do one of the following:
+Multiple Tern servers are not supported. To switch to a different JavaScript
+project, you need to restart the Tern server using [the `RestartServer`
+subcommand](#the-restartserver-subcommand) while editing a file of that
+project:
 
-- start a new instance of Vim from the new project's directory
-- change Vim's working directory (`:cd /path/to/new/project`) and restart the
-  [ycmd server][ycmd] (`:YcmRestartServer`)
-- change Vim's working directory (`:cd /path/to/new/project`), open a JavaScript
-  file (or set filetype to JavaScript) and restart the Tern server using YCM
-  completer subcommand `:YcmCompleter RestartServer`.
+```vim
+:YcmCompleter RestartServer
+```
 
 #### Tips and tricks
 
@@ -1051,16 +1062,20 @@ define( [ 'mylib/file1', 'anotherlib/anotherfile' ], function( f1, f2 ) {
 
 Completions and GoTo commands within the current crate and its dependencies
 should work out of the box with no additional configuration (provided that you
-built YCM with the `--racer-completer` flag; see the [*Installation*
-section](#installation) for details).  For semantic analysis inclusive of the
-standard library, you must have a local copy of [the rust source
-code][rust-src]. You also need to set the following option so YouCompleteMe can
-locate it.
-
+built YCM with the `--rust-completer` flag; see the [*Installation*
+section](#installation) for details). For semantic analysis inclusive of the
+standard library, you must have a local copy of [the Rust source
+code][rust-src]. If using [rustup][], run the following command to download the
+code:
+```
+rustup component add rust-src
+```
+YCM will find its location automatically. Otherwise, download the archive,
+extract it somewhere, and set the following option so YCM can locate it:
 ```viml
-" In this example, the rust source code zip has been extracted to
-" /usr/local/rust/rustc-1.5.0
-let g:ycm_rust_src_path = '/usr/local/rust/rustc-1.5.0/src'
+" In this example, the Rust source code archive has been extracted to
+" /usr/local/rust/rustc-1.20.0
+let g:ycm_rust_src_path = '/usr/local/rust/rustc-1.20.0/src'
 ```
 
 ### Python Semantic Completion
@@ -1267,9 +1282,15 @@ completion engine.
 
 ### The `:YcmToggleLogs` command
 
-This command opens in separate windows the logfiles given as arguments or closes
-them if they are already open in the editor. When no argument is given, list the
-available logfiles. Only for debugging purpose.
+This command presents the list of logfiles created by YCM, the [ycmd
+server][ycmd], and the semantic engine server for the current filetype, if any.
+One of these logfiles can be opened in the editor (or closed if already open) by
+entering the corresponding number or by clicking on it with the mouse.
+Additionally, this command can take the logfile names as arguments. Use the
+`<TAB>` key (or any other key defined by the `wildchar` option) to complete the
+arguments or to cycle through them (depending on the value of the `wildmode`
+option). Each logfile given as an argument is directly opened (or closed if
+already open) in the editor. Only for debugging purposes.
 
 ### The `:YcmCompleter` command
 
@@ -1308,7 +1329,7 @@ maps the `<leader>jd` sequence to the longer subcommand invocation.
 
 These commands are useful for jumping around and exploring code. When moving
 the cursor, the subcommands add entries to Vim's `jumplist` so you can use
-`CTRL-O` to jump back to where you where before invoking the command (and
+`CTRL-O` to jump back to where you were before invoking the command (and
 `CTRL-I` to jump forward; see `:h jumplist` for details). If there is more
 than one destination, the quickfix list (see `:h quickfix`) is populated with
 the available locations and opened to full width at the bottom of the screen.
@@ -1404,20 +1425,6 @@ For example:
 ```
 
 Invoking this command on `s` returns `std::string => std::basic_string<char>`
-
-**NOTE:** Due to limitations of `libclang`, invoking this command on the word
-`auto` typically returns `auto`. However, invoking it on a usage of the variable
-with inferred type returns the correct type, but typically it is repeated due to
-`libclang` returning that the types differ.
-
-For example:
-
-```c++
-const char *s = "String";
-auto x = &s; // invoking on x or auto returns "auto";
-             // invoking on s returns "const char *"
-std::cout << *x; // invoking on x returns "const char ** => const char **"
-```
 
 **NOTE:** Causes re-parsing of the current translation unit.
 
@@ -1526,15 +1533,6 @@ indication).
 
 **NOTE:** Causes re-parsing of the current translation unit.
 
-**NOTE:** After applying a fix-it, the diagnostics UI is not immediately
-updated.  This is due to a technical restriction in Vim. Moving the cursor, or
-issuing the `:YcmForceCompileAndDiagnostics` command will refresh the
-diagnostics.  Repeated invocations of the `FixIt` command on a given line,
-however, _do_ apply all diagnostics as expected without requiring refreshing of
-the diagnostics UI.  This is particularly useful where there are multiple
-diagnostics on one line, or where after fixing one diagnostic, another fix-it is
-available.
-
 Supported in filetypes: `c, cpp, objc, objcpp, cs`
 
 #### The `RefactorRename <new name>` subcommand
@@ -1591,6 +1589,9 @@ flags.
 
 Restarts the semantic-engine-as-localhost-server for those semantic engines that
 work as separate servers that YCM talks to.
+
+Use this subcommand while editing a file from a JavaScript project to switch to
+that project.
 
 An additional optional argument may be supplied for Python, specifying the
 python binary to use to restart the Python semantic engine.
@@ -1657,8 +1658,8 @@ Autocommands
 
 This `User` autocommand is fired when YCM opens the location list window in
 response to the `YcmDiags` command. By default, the location list window is
-opened to full width at the bottom of the screen and its height is set to fit
-all entries. This behavior can be overridden by using the `YcmLocationOpened`
+opened to the bottom of the current window and its height is set to fit all
+entries. This behavior can be overridden by using the `YcmLocationOpened`
 autocommand which is triggered while the cursor is in the location list window.
 For instance:
 ```viml
@@ -2680,9 +2681,12 @@ cache.
 
 ### YCM auto-inserts completion strings I don't want!
 
-This means you probably have some mappings that interfere with YCM's internal
-ones. Make sure you don't have something mapped to `<C-p>`, `<C-x>` or `<C-u>`
-(in insert mode).
+If this happens when Vim automatically wraps text then it's a Vim bug that has
+been fixed in version 8.0.0127. Update your Vim to this version or later.
+
+This could also be some mappings that interfere with YCM's internal ones. Make
+sure you don't have something mapped to `<C-p>`, `<C-x>` or `<C-u>` (in insert
+mode).
 
 YCM _never_ selects something for you; it just shows you a menu and the user has
 to explicitly select something. If something is being selected automatically,
@@ -2835,11 +2839,10 @@ details. If you want to see which tag files YCM will read for a given buffer,
 run `:echo tagfiles()` with the relevant buffer active. Note that that function
 will only list tag files that already exist.
 
-### `CTRL-U` in insert mode does not work
+### `CTRL-U` in insert mode does not work while the completion menu is visible
 
-YCM keeps you in a `completefunc` completion mode when you're typing in insert
-mode and Vim disables `<C-U>` in completion mode as a "feature." Sadly there's
-nothing I can do about this.
+YCM uses `completefunc` completion mode to show suggestions and Vim disables
+`<C-U>` in that mode as a "feature." Sadly there's nothing I can do about this.
 
 ### YCM conflicts with UltiSnips TAB key usage
 
@@ -3154,3 +3157,4 @@ This software is licensed under the [GPL v3 license][gpl].
 [ninja-compdb]: https://ninja-build.org/manual.html
 [vim-nerdtree-tabs]: https://github.com/jistr/vim-nerdtree-tabs
 [++enc]: http://vimdoc.sourceforge.net/htmldoc/editing.html#++enc
+[rustup]: https://www.rustup.rs/

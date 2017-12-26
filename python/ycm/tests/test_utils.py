@@ -47,6 +47,7 @@ MATCHADD_REGEX = re.compile(
 MATCHDELETE_REGEX = re.compile( '^matchdelete\((?P<id>\d+)\)$' )
 OMNIFUNC_REGEX_FORMAT = (
   '^{omnifunc_name}\((?P<findstart>[01]),[\'"](?P<base>.*)[\'"]\)$' )
+FNAMEESCAPE_REGEX = re.compile( '^fnameescape\(\'(?P<filepath>.+)\'\)$' )
 
 # One-and only instance of mocked Vim object. The first 'import vim' that is
 # executed binds the vim module to the instance of MagicMock that is created,
@@ -181,12 +182,17 @@ def _MockVimMatchEval( value ):
   return None
 
 
+# This variable exists to easily mock the 'g:ycm_server_python_interpreter'
+# option in tests.
+server_python_interpreter = ''
+
+
 def _MockVimEval( value ):
   if value == 'g:ycm_min_num_of_chars_for_completion':
     return 0
 
   if value == 'g:ycm_server_python_interpreter':
-    return ''
+    return server_python_interpreter
 
   if value == 'tempname()':
     return '_TEMP_FILE_'
@@ -205,6 +211,10 @@ def _MockVimEval( value ):
   result = _MockVimMatchEval( value )
   if result is not None:
     return result
+
+  match = FNAMEESCAPE_REGEX.search( value )
+  if match:
+    return match.group( 'filepath' )
 
   raise ValueError( 'Unexpected evaluation: {0}'.format( value ) )
 
