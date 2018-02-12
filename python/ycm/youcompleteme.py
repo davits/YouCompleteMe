@@ -330,6 +330,16 @@ class YouCompleteMe( object ):
     return response
 
 
+  def GetSignatureHints( self ):
+    if ( not self.NativeFiletypeCompletionAvailable() and
+         self.CurrentFiletypeCompletionEnabled() ):
+        return []
+
+    request_data = BuildRequestData()
+    self._AddExtraConfDataIfNeeded( request_data )
+    return BaseRequest.PostDataToHandler( request_data, 'signature_hints', 0.1 )
+
+
   def SendCommandRequest( self,
                           arguments,
                           completer,
