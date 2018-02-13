@@ -278,8 +278,13 @@ function! s:SetUpKeyMappings()
   " completion menu is open. We handle this by closing the completion menu on
   " the keys that delete a character in insert mode.
   for key in [ "<BS>", "<C-h>" ]
-    silent! exe 'inoremap <unique> <expr> ' . key .
-          \ ' <SID>OnDeleteChar( "\' . key . '" )'
+    let rkey = key
+    let mapped = maparg(key, 'i')
+    if mapped != ''
+        let rkey = mapped
+    endif
+    silent! exe 'imap <unique> <expr> ' . key .
+              \ ' <SID>OnDeleteChar( "\' . rkey . '" )'
   endfor
 endfunction
 
