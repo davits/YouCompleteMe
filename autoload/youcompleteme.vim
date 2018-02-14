@@ -277,10 +277,48 @@ function! s:SetUpKeyMappings()
   " The TextChangedI event is not triggered when deleting a character while the
   " completion menu is open. We handle this by closing the completion menu on
   " the keys that delete a character in insert mode.
+  inoremap <silent> <SID>YcmDeleteChar <C-R>=<SID>OnDeleteChar()<CR>
+  inoremap <script>  <Plug>YcmDeleteChar <SID>YcmDeleteChar
   for key in [ "<BS>", "<C-h>" ]
-    silent! exe 'inoremap <unique> <expr> ' . key .
-          \ ' <SID>OnDeleteChar( "\' . key . '" )'
+    call s:MapDeleteChar( key )
   endfor
+endfunction
+
+
+function s:MapDeleteChar( key )
+  let current = maparg( a:key, 'i', 0, 1 )
+  let current_mapping = empty( current ) ? a:key : current.rhs
+  let is_recursive = current_mapping =~? a:key
+  let is_local = !empty( current ) && current.buffer
+  let is_silent = !empty( current ) && current.silent
+
+  " If the key is mapped to itself, use a non-recursive mapping to avoid
+  " infinite recursion.
+  if is_recursive
+    let mapping_cmd = 'inoremap'
+    let mapping_args = '<script>'
+    let mapping_lhs = a:key
+    let mapping_rhs = '<SID>YcmDeleteChar' . current_mapping
+  else
+    let mapping_cmd = 'imap'
+    let mapping_args = ''
+    let mapping_lhs = a:key
+    let mapping_rhs = '<Plug>YcmDeleteChar' . current_mapping
+  endif
+
+  if is_silent
+    let mapping_args .= ' <silent>'
+  endif
+
+  " A local buffer mapping may already exist for the initial buffer before
+  " setting our global mapping. Since a local mapping takes precedence over a
+  " global one, we remove it. Once our global mapping is set, we expect users
+  " and plugins to not override it.
+  if is_local
+    exe 'iunmap <buffer> ' . mapping_lhs
+  endif
+  exe mapping_cmd . ' ' . mapping_args . ' ' . mapping_lhs . ' ' . mapping_rhs
+
 endfunction
 
 
@@ -618,12 +656,9 @@ function! s:OnInsertChar()
 endfunction
 
 
-function! s:OnDeleteChar( key )
+function! s:OnDeleteChar()
   call timer_stop( s:pollers.completion.id )
-  if pumvisible()
-    return "\<C-y>" . a:key
-  endif
-  return a:key
+  return pumvisible() ? "\<C-y>" : ""
 endfunction
 
 
