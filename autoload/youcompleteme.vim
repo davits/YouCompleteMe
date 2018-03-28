@@ -516,16 +516,20 @@ function! youcompleteme#BalloonEval()
 endfunction
 
 function! s:SetUpBalloon()
-  set balloonexpr=youcompleteme#BalloonEval()
-  set balloondelay=1000
+  if has( 'balloon_eval' )
+      set balloonexpr=youcompleteme#BalloonEval()
+      set balloondelay=1000
+  endif
 endfunction
 
 
 function! s:EnableBalloonIfSupported()
-  if &ft == 'cpp'
-    set ballooneval
-  else
-    set noballooneval
+  if has( 'balloon_eval' )
+      if &ft == 'cpp'
+        set ballooneval
+      else
+        set noballooneval
+      endif
   endif
 endfunction
 

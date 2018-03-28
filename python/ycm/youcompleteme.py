@@ -761,7 +761,7 @@ class YouCompleteMe( object ):
       for callback in self._file_parse_ready_callbacks:
         try:
           callback( bufnr )
-        except:
+        except Exception:
           pass
 
 
