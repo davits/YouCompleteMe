@@ -56,7 +56,7 @@ Contents
     - [YcmCompleter subcommands](#ycmcompleter-subcommands)
         - [GoTo Commands](#goto-commands)
         - [Semantic Information Commands](#semantic-information-commands)
-        - [Refactoring and FixIt Commands](#refactoring-and-fixit-commands)
+        - [Refactoring Commands](#refactoring-commands)
         - [Miscellaneous Commands](#miscellaneous-commands)
 - [Functions](#functions)
 - [Autocommands](#autocommands)
@@ -430,18 +430,16 @@ Download and install the following software:
 variable.
 - [Visual Studio][visual-studio-download]. Download the community edition.
 During setup, select _Desktop development with C++_ in _Workloads_.
-- [7-zip 16.04 or later][7z-download]. Required to build YCM with semantic
-support for C-family languages.
 
 Compiling YCM **with** semantic support for C-family languages:
 
     cd %USERPROFILE%/vimfiles/bundle/YouCompleteMe
-    install.py --clang-completer
+    python install.py --clang-completer
 
 Compiling YCM **without** semantic support for C-family languages:
 
     cd %USERPROFILE%/vimfiles/bundle/YouCompleteMe
-    install.py
+    python install.py
 
 The following additional language support options are available:
 
@@ -1764,10 +1762,10 @@ manually saved. A confirmation dialog is opened prior to doing this to remind
 you that this is about to happen.
 
 Once the modifications have been made, the quickfix list (see `:help quickfix`)
-is opened and populated with the locations of all modifications. This can be
-used to review all automatic changes made. Typically, use the `CTRL-W
-<enter>` combination to open the selected file in a new split. It is possible
-to customize how the quickfix window is opened by using [the `YcmQuickFixOpened`
+is populated with the locations of all modifications. This can be used to review
+all automatic changes made by using `:copen`. Typically, use the `CTRL-W
+<enter>` combination to open the selected file in a new split. It is possible to
+customize how the quickfix window is opened by using [the `YcmQuickFixOpened`
 autocommand](#the-ycmquickfixopened-autocommand).
 
 The buffers are *not* saved automatically. That is, you must save the modified
@@ -3037,7 +3035,8 @@ First, put `let g:ycm_collect_identifiers_from_tags_files = 1` in your vimrc.
 Make sure you are using [Exuberant Ctags][exuberant-ctags] to produce your tags
 files since the only supported tag format is the [Exuberant Ctags
 format][ctags-format]. The format from "plain" ctags is NOT supported. The
-output of `ctags --version` should list "Exuberant Ctags".
+output of `ctags --version` should list "Exuberant Ctags". See [Universal
+Ctags][universal-ctags] for a maintained version.
 
 Ctags needs to be called with the `--fields=+l` (that's a lowercase `L`, not a
 one) option because YCM needs the `language:<lang>` field in the tags output.
@@ -3058,6 +3057,14 @@ will only list tag files that already exist.
 
 YCM uses `completefunc` completion mode to show suggestions and Vim disables
 `<C-U>` in that mode as a "feature." Sadly there's nothing I can do about this.
+
+### My `CTRL-R` mapping does not work while the completion menu is visible
+
+Vim prevents remapping of the `<C-R>` key in all `<C-X>` completion modes
+(except the `<C-X><C-N>`/`<C-X><C-P>` mode which operates in the same mode as
+`<C-N>`/`<C-P>`) and YCM uses the `<C-X><C-U>` (`completefunc`) mode for
+completions. This means that adding `<C-R>` to any of the `g:ycm_key_list_*`
+options has no effect. You need to use another key.
 
 ### YCM conflicts with UltiSnips TAB key usage
 
@@ -3335,6 +3342,7 @@ This software is licensed under the [GPL v3 license][gpl].
 [jedi]: https://github.com/davidhalter/jedi
 [ultisnips]: https://github.com/SirVer/ultisnips/blob/master/doc/UltiSnips.txt
 [exuberant-ctags]: http://ctags.sourceforge.net/
+[universal-ctags]: https://github.com/universal-ctags/ctags
 [ctags-format]: http://ctags.sourceforge.net/FORMAT
 [vundle-bug]: https://github.com/VundleVim/Vundle.vim/issues/48
 [ycm-users]: https://groups.google.com/forum/?hl=en#!forum/ycm-users

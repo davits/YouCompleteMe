@@ -27,7 +27,7 @@ import vim
 import os
 import json
 import re
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from ycmd.utils import ( ByteOffsetToCodepointOffset, GetCurrentDirectory,
                          JoinLinesAsUnicode, ToBytes, ToUnicode )
 from ycmd import user_options_store
@@ -44,6 +44,14 @@ FIXIT_OPENING_BUFFERS_MESSAGE_FORMAT = (
     'files will be written to disk. Do you wish to continue?' )
 
 NO_SELECTION_MADE_MSG = "No valid selection was made; aborting."
+
+# This is the starting value assigned to the sign's id of each buffer. This
+# value is then incremented for each new sign. This should prevent conflicts
+# with other plugins using signs.
+SIGN_BUFFER_ID_INITIAL_VALUE = 100000000
+
+SIGN_PLACE_REGEX = re.compile(
+  r"^.*=(?P<line>\d+).*=(?P<id>\d+).*=(?P<name>Ycm\w+)$" )
 
 
 def CurrentLineAndColumn():
@@ -163,58 +171,90 @@ def GetBufferChangedTick( bufnr ):
   return GetIntValue( 'getbufvar({0}, "changedtick")'.format( bufnr ) )
 
 
-def UnplaceSignInBuffer( buffer_number, sign_id ):
-  if buffer_number < 0:
-    return
-  vim.command(
-    'try | exec "sign unplace {0} buffer={1}" | catch /E158/ | endtry'.format(
-        sign_id, buffer_number ) )
+def CaptureVimCommand( command ):
+  vim.command( 'redir => b:ycm_command' )
+  vim.command( 'silent! {}'.format( command ) )
+  vim.command( 'redir END' )
+  output = ToUnicode( vim.eval( 'b:ycm_command' ) )
+  vim.command( 'unlet b:ycm_command' )
+  return output
 
 
-def PlaceSign( sign_id, line_num, buffer_num, is_error = True ):
-  # libclang can give us diagnostics that point "outside" the file; Vim borks
-  # on these.
-  if line_num < 1:
-    line_num = 1
+class DiagnosticSign( namedtuple( 'DiagnosticSign',
+                                  [ 'id', 'line', 'name', 'buffer_number' ] ) ):
+  # We want two signs that have different ids but the same location to compare
+  # equal. ID doesn't matter.
+  def __eq__( self, other ):
+    return ( self.line == other.line and
+             self.name == other.name and
+             self.buffer_number == other.buffer_number )
 
-  sign_name = 'YcmError' if is_error else 'YcmWarning'
+
+def GetSignsInBuffer( buffer_number ):
+  sign_output = CaptureVimCommand(
+    'sign place buffer={}'.format( buffer_number ) )
+  signs = []
+  for line in sign_output.split( '\n' ):
+    match = SIGN_PLACE_REGEX.search( line )
+    if match:
+      signs.append( DiagnosticSign( int( match.group( 'id' ) ),
+                                    int( match.group( 'line' ) ),
+                                    match.group( 'name' ),
+                                    buffer_number ) )
+  return signs
+
+
+def UnplaceSign( sign ):
+  vim.command( 'sign unplace {0} buffer={1}'.format( sign.id,
+                                                     sign.buffer_number ) )
+
+
+def PlaceSign( sign ):
   vim.command( 'sign place {0} name={1} line={2} buffer={3}'.format(
-    sign_id, sign_name, line_num, buffer_num ) )
+    sign.id, sign.name, sign.line, sign.buffer_number ) )
 
 
-def ClearYcmSyntaxMatches():
-  matches = VimExpressionToPythonType( 'getmatches()' )
-  for match in matches:
-    if match[ 'group' ].startswith( 'Ycm' ):
-      vim.eval( 'matchdelete({0})'.format( match[ 'id' ] ) )
+class DiagnosticMatch( namedtuple( 'DiagnosticMatch',
+                                   [ 'id', 'group', 'pattern' ] ) ):
+  def __eq__( self, other ):
+    return ( self.group == other.group and
+             self.pattern == other.pattern )
 
 
-def AddDiagnosticSyntaxMatch( line_num,
-                              column_num,
-                              line_end_num = None,
-                              column_end_num = None,
-                              is_error = True ):
-  """Highlight a range in the current window starting from
-  (|line_num|, |column_num|) included to (|line_end_num|, |column_end_num|)
-  excluded. If |line_end_num| or |column_end_num| are not given, highlight the
-  character at (|line_num|, |column_num|). Both line and column numbers are
-  1-based. Return the ID of the newly added match."""
-  group = 'YcmErrorSection' if is_error else 'YcmWarningSection'
+def GetDiagnosticMatchesInCurrentWindow():
+  vim_matches = vim.eval( 'getmatches()' )
+  return [ DiagnosticMatch( match[ 'id' ],
+                            match[ 'group' ],
+                            match[ 'pattern' ] )
+           for match in vim_matches if match[ 'group' ].startswith( 'Ycm' ) ]
 
+
+def AddDiagnosticMatch( match ):
+  return GetIntValue( "matchadd('{}', '{}')".format( match.group,
+                                                     match.pattern ) )
+
+
+def RemoveDiagnosticMatch( match ):
+  return GetIntValue( "matchdelete({})".format( match.id ) )
+
+
+def GetDiagnosticMatchPattern( line_num,
+                               column_num,
+                               line_end_num = None,
+                               column_end_num = None ):
   line_num, column_num = LineAndColumnNumbersClamped( line_num, column_num )
 
   if not line_end_num or not column_end_num:
-    return GetIntValue(
-      "matchadd('{0}', '\%{1}l\%{2}c')".format( group, line_num, column_num ) )
+    return '\%{}l\%{}c'.format( line_num, column_num )
 
   # -1 and then +1 to account for column end not included in the range.
   line_end_num, column_end_num = LineAndColumnNumbersClamped(
       line_end_num, column_end_num - 1 )
   column_end_num += 1
-
-  return GetIntValue(
-    "matchadd('{0}', '\%{1}l\%{2}c\_.\\{{-}}\%{3}l\%{4}c')".format(
-      group, line_num, column_num, line_end_num, column_end_num ) )
+  return '\%{}l\%{}c\_.\\{{-}}\%{}l\%{}c'.format( line_num,
+                                                  column_num,
+                                                  line_end_num,
+                                                  column_end_num )
 
 
 # Clamps the line and column numbers so that they are not past the contents of
@@ -227,7 +267,9 @@ def LineAndColumnNumbersClamped( line_num, column_num ):
   if line_num and line_num > max_line:
     new_line_num = max_line
 
-  max_column = len( vim.current.buffer[ new_line_num - 1 ] )
+  # Vim buffers are a list of byte objects on Python 2 but Unicode objects on
+  # Python 3.
+  max_column = len( ToBytes( vim.current.buffer[ new_line_num - 1 ] ) )
   if column_num and column_num > max_column:
     new_column_num = max_column
 
@@ -792,7 +834,6 @@ def ReplaceChunks( chunks, silent=False ):
   if not silent:
     if locations:
       SetQuickFixList( locations )
-      OpenQuickFixList()
 
     PostVimMessage( 'Applied {0} changes'.format( len( chunks ) ),
                     warning = False )
@@ -859,6 +900,17 @@ def ReplaceChunk( start, end, replacement_text, vim_buffer ):
 
   start_column = start[ 'column_num' ] - 1
   end_column = end[ 'column_num' ] - 1
+
+  # When sending a request to the server, a newline is added to the buffer
+  # contents to match what gets saved to disk. If the server generates a chunk
+  # containing that newline, this chunk goes past the Vim buffer contents since
+  # there is actually no new line. When this happens, recompute the end position
+  # of where the chunk is applied and remove all trailing characters in the
+  # chunk.
+  if end_line >= len( vim_buffer ):
+    end_column = len( ToBytes( vim_buffer[ -1 ] ) )
+    end_line = len( vim_buffer ) - 1
+    replacement_text = replacement_text.rstrip()
 
   # NOTE: replacement_text is unicode, but all our offsets are byte offsets,
   # so we convert to bytes

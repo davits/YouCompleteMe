@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2017 YouCompleteMe contributors
+# Copyright (C) 2016-2018 YouCompleteMe contributors
 #
 # This file is part of YouCompleteMe.
 #
@@ -23,7 +23,7 @@ from __future__ import absolute_import
 from builtins import *  # noqa
 
 from ycm.tests.test_utils import ( ExtendedMock, MockVimBuffers, MockVimModule,
-                                   VimBuffer, VimMatch )
+                                   VimBuffer, VimMatch, VimSign )
 MockVimModule()
 
 import os
@@ -33,6 +33,7 @@ from hamcrest import ( assert_that, contains, empty, equal_to, is_in, is_not,
 from mock import call, MagicMock, patch
 
 from ycm.paths import _PathToPythonUsedDuringBuild
+from ycm.vimsupport import SIGN_BUFFER_ID_INITIAL_VALUE
 from ycm.youcompleteme import YouCompleteMe
 from ycm.tests import ( MakeUserOptions, StopServer, test_utils,
                         WaitUntilReady, YouCompleteMeInstance )
@@ -517,9 +518,8 @@ def YouCompleteMe_ShowDiagnostics_DiagnosticsFound_OpenLocationList_test(
 @patch( 'ycm.youcompleteme.YouCompleteMe.FiletypeCompleterExistsForFiletype',
         return_value = True )
 @patch( 'ycm.vimsupport.PostVimMessage', new_callable = ExtendedMock )
-@patch( 'vim.command', new_callable = ExtendedMock )
 def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
-  ycm, vim_command, post_vim_message, *args ):
+  ycm, post_vim_message, *args ):
 
   contents = """int main() {
   int x, y;
@@ -592,6 +592,7 @@ def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
                               window = 2 )
 
   test_utils.VIM_MATCHES = []
+  test_utils.VIM_SIGNS = []
 
   with MockVimBuffers( [ current_buffer ], current_buffer, ( 3, 1 ) ):
     with patch( 'ycm.client.event_notification.EventNotification.Response',
@@ -615,9 +616,12 @@ def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
     )
 
     # Only the error sign is placed.
-    vim_command.assert_has_exact_calls( [
-      call( 'sign place 1 name=YcmError line=3 buffer=5' ),
-    ] )
+    assert_that(
+      test_utils.VIM_SIGNS,
+      contains(
+        VimSign( SIGN_BUFFER_ID_INITIAL_VALUE, 3, 'YcmError', 5 )
+      )
+    )
 
   # The error is not echoed again when moving the cursor along the line.
   with MockVimBuffers( [ current_buffer ], current_buffer, ( 3, 2 ) ):
@@ -639,7 +643,6 @@ def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
       "expected ';' after expression (FixIt)",
       truncate = True, warning = False )
 
-    vim_command.reset_mock()
     with patch( 'ycm.client.event_notification.EventNotification.Response',
                 return_value = diagnostics[ 1 : ] ):
       with patch( 'ycm.buffer.Buffer.OngoingParseRequest',
@@ -655,10 +658,31 @@ def YouCompleteMe_UpdateDiagnosticInterface_PrioritizeErrorsOverWarnings_test(
       )
     )
 
-    vim_command.assert_has_exact_calls( [
-      call( 'sign place 2 name=YcmWarning line=3 buffer=5' ),
-      call( 'try | exec "sign unplace 1 buffer=5" | catch /E158/ | endtry' )
-    ] )
+    assert_that(
+      test_utils.VIM_SIGNS,
+      contains(
+        VimSign( SIGN_BUFFER_ID_INITIAL_VALUE + 1, 3, 'YcmWarning', 5 )
+      )
+    )
+
+
+@YouCompleteMeInstance( { 'enable_diagnostic_highlighting': 1 } )
+def YouCompleteMe_UpdateMatches_ClearDiagnosticMatchesInNewBuffer_test( ycm ):
+  current_buffer = VimBuffer( 'buffer',
+                              filetype = 'c',
+                              number = 5,
+                              window = 2 )
+
+  test_utils.VIM_MATCHES = [
+    VimMatch( 'YcmWarningSection', '\%3l\%5c\_.\{-}\%3l\%7c' ),
+    VimMatch( 'YcmWarningSection', '\%3l\%3c\_.\{-}\%3l\%9c' ),
+    VimMatch( 'YcmErrorSection', '\%3l\%8c' )
+  ]
+
+  with MockVimBuffers( [ current_buffer ], current_buffer ):
+    ycm.UpdateMatches()
+
+    assert_that( test_utils.VIM_MATCHES, empty() )
 
 
 @YouCompleteMeInstance( { 'echo_current_diagnostic': 1,
@@ -898,7 +922,7 @@ def YouCompleteMe_OnPeriodicTick_ServerNotReady_test( ycm, *args ):
         return_value = True )
 @patch( 'ycm.client.base_request._ValidateResponseObject', return_value = True )
 @patch( 'ycm.client.base_request.BaseRequest.PostDataToHandlerAsync' )
-def YouCompelteMe_OnPeriodicTick_DontRetry_test( ycm,
+def YouCompleteMe_OnPeriodicTick_DontRetry_test( ycm,
                                                  post_data_to_handler_async,
                                                  *args ):
 
@@ -949,7 +973,7 @@ def YouCompelteMe_OnPeriodicTick_DontRetry_test( ycm,
         return_value = True )
 @patch( 'ycm.client.base_request._ValidateResponseObject', return_value = True )
 @patch( 'ycm.client.base_request.BaseRequest.PostDataToHandlerAsync' )
-def YouCompelteMe_OnPeriodicTick_Exception_test( ycm,
+def YouCompleteMe_OnPeriodicTick_Exception_test( ycm,
                                                  post_data_to_handler_async,
                                                  *args ):
 
@@ -988,7 +1012,7 @@ def YouCompelteMe_OnPeriodicTick_Exception_test( ycm,
 @patch( 'ycm.client.base_request._ValidateResponseObject', return_value = True )
 @patch( 'ycm.client.base_request.BaseRequest.PostDataToHandlerAsync' )
 @patch( 'ycm.client.messages_request._HandlePollResponse' )
-def YouCompelteMe_OnPeriodicTick_ValidResponse_test( ycm,
+def YouCompleteMe_OnPeriodicTick_ValidResponse_test( ycm,
                                                      handle_poll_response,
                                                      post_data_to_handler_async,
                                                      *args ):
@@ -1017,3 +1041,22 @@ def YouCompelteMe_OnPeriodicTick_ValidResponse_test( ycm,
     mock_future.result.assert_called()
     post_data_to_handler_async.assert_called() # Poll again!
     assert_that( ycm._message_poll_request is not None )
+
+
+@YouCompleteMeInstance()
+@patch( 'ycm.client.completion_request.CompletionRequest.OnCompleteDone' )
+def YouCompleteMe_OnCompleteDone_CompletionRequest_test( ycm,
+                                                         on_complete_done ):
+  current_buffer = VimBuffer( 'current_buffer' )
+  with MockVimBuffers( [ current_buffer ], current_buffer, ( 1, 1 ) ):
+    ycm.SendCompletionRequest()
+  ycm.OnCompleteDone()
+  on_complete_done.assert_called()
+
+
+@YouCompleteMeInstance()
+@patch( 'ycm.client.completion_request.CompletionRequest.OnCompleteDone' )
+def YouCompleteMe_OnCompleteDone_NoCompletionRequest_test( ycm,
+                                                           on_complete_done ):
+  ycm.OnCompleteDone()
+  on_complete_done.assert_not_called()

@@ -137,6 +137,7 @@ function! youcompleteme#Enable()
     autocmd InsertLeave * call s:OnInsertLeave()
     autocmd VimLeave * call s:OnVimLeave()
     autocmd CompleteDone * call s:OnCompleteDone()
+    autocmd BufEnter,WinEnter * call s:UpdateMatches()
   augroup END
 
   " The FileType event is not triggered for the first loaded file. We wait until
@@ -580,6 +581,11 @@ function! s:OnBufferUnload()
 endfunction
 
 
+function! s:UpdateMatches()
+  exec s:python_command "ycm_state.UpdateMatches()"
+endfunction
+
+
 function! s:PollServerReady( timer_id )
   if !s:Pyeval( 'ycm_state.IsServerAlive()' )
     exec s:python_command "ycm_state.NotifyUserIfServerCrashed()"
@@ -891,7 +897,7 @@ function! s:SetUpCommands()
   command! -nargs=* -complete=custom,youcompleteme#LogsComplete
         \ YcmToggleLogs call s:ToggleLogs(<f-args>)
   command! -nargs=* -complete=custom,youcompleteme#SubCommandsComplete -range
-        \ YcmCompleter call s:CompleterCommand(<range>,
+        \ YcmCompleter call s:CompleterCommand(<count>,
         \                                      <line1>,
         \                                      <line2>,
         \                                      <f-args>)
@@ -933,7 +939,7 @@ function! youcompleteme#LogsComplete( arglead, cmdline, cursorpos )
 endfunction
 
 
-function! s:CompleterCommand( range, line1, line2, ... )
+function! s:CompleterCommand( count, line1, line2, ... )
   " CompleterCommand will call the OnUserCommand function of a completer. If
   " the first arguments is of the form "ft=..." it can be used to specify the
   " completer to use (for example "ft=cpp"). Else the native filetype completer
@@ -954,7 +960,7 @@ function! s:CompleterCommand( range, line1, line2, ... )
   exec s:python_command "ycm_state.SendCommandRequest(" .
         \ "vim.eval( 'l:arguments' )," .
         \ "vim.eval( 'l:completer' )," .
-        \ "vimsupport.GetBoolValue( 'a:range' )," .
+        \ "vimsupport.GetBoolValue( 'a:count != -1' )," .
         \ "vimsupport.GetIntValue( 'a:line1' )," .
         \ "vimsupport.GetIntValue( 'a:line2' ) )"
 endfunction
