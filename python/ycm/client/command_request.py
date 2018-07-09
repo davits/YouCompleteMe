@@ -76,9 +76,8 @@ class CommandRequest( BaseRequest ):
       'completer_target': self._completer_target,
       'command_arguments': self._arguments
     } )
-    with HandleServerException():
-      self._response = self.PostDataToHandler( request_data,
-                                               'run_completer_command' )
+    self._response = self.PostDataToHandler( request_data,
+                                             'run_completer_command' )
 
 
   def Response( self ):
@@ -172,7 +171,7 @@ def SendGetTypeRequest( line, column ):
   if response and 'message' in response:
     msg = response[ 'message' ]
     if msg == 'Unknown type':
-        msg = ''
+      msg = ''
   return msg
 
 

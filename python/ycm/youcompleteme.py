@@ -341,7 +341,7 @@ class YouCompleteMe( object ):
 
 
   def GetType( self, line, column ):
-      return SendGetTypeRequest( line, column )
+    return SendGetTypeRequest( line, column )
 
 
   def GetDefinedSubcommands( self ):
@@ -605,7 +605,7 @@ class YouCompleteMe( object ):
 
 
   def RegisterFileParseReadyCallback( self, callback ):
-    self._file_parse_ready_callbacks.append(callback)
+    self._file_parse_ready_callbacks.append( callback )
 
 
   def NotifyFileParseReady( self, bufnr ):
