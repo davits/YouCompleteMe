@@ -38,7 +38,6 @@ from ycm.buffer import ( BufferDict,
                          DIAGNOSTIC_UI_ASYNC_FILETYPES )
 from ycmd import server_utils, user_options_store, utils
 from ycmd.request_wrap import RequestWrap
-from ycmd.responses import ServerError
 from ycm.omni_completer import OmniCompleter
 from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
@@ -641,15 +640,13 @@ class YouCompleteMe( object ):
       }
       self._AddExtraConfDataIfNeeded( request_data )
       response = BaseRequest().PostDataToHandler( request_data,
-                                                'semantic_tokens',
-                                                timeout )
-      return response[ 'tokens' ]
-    except ServerError as e:
-      if 'Still parsing' in str( e ):
-        return 'Parsing'
-      return 'Error'
+                                                  'semantic_tokens',
+                                                  timeout, False )
+      return response[ 'tokens' ] if response else None
     except Timeout:
       return 'Timeout'
+    except Exception:
+      return None
 
 
   def GetSkippedRanges( self, bufnr, timeout = 0.01 ):
@@ -665,15 +662,13 @@ class YouCompleteMe( object ):
       }
       self._AddExtraConfDataIfNeeded( request_data )
       response = BaseRequest().PostDataToHandler( request_data,
-                                                'skipped_ranges',
-                                                timeout )
-      return response[ 'skipped_ranges' ]
-    except ServerError as e:
-      if 'Still parsing' in str( e ):
-        return 'Parsing'
-      return 'Error'
+                                                  'skipped_ranges',
+                                                  timeout, False )
+      return response[ 'skipped_ranges' ] if response else None
     except Timeout:
       return 'Timeout'
+    except Exception:
+      return None
 
 
   def GetLogfiles( self ):
