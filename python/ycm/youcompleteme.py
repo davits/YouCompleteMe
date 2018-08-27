@@ -324,6 +324,7 @@ class YouCompleteMe( object ):
   def SendCommandRequest( self,
                           arguments,
                           completer,
+                          modifiers,
                           has_range,
                           start_line,
                           end_line ):
@@ -336,7 +337,7 @@ class YouCompleteMe( object ):
     if has_range:
       extra_data.update( vimsupport.BuildRange( start_line, end_line ) )
     self._AddExtraConfDataIfNeeded( extra_data )
-    return SendCommandRequest( arguments, completer, extra_data )
+    return SendCommandRequest( arguments, completer, modifiers, extra_data )
 
 
   def GetType( self, line, column ):

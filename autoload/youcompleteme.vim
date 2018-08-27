@@ -914,11 +914,21 @@ function! s:SetUpCommands()
   command! YcmDebugInfo call s:DebugInfo()
   command! -nargs=* -complete=custom,youcompleteme#LogsComplete
         \ YcmToggleLogs call s:ToggleLogs(<f-args>)
-  command! -nargs=* -complete=custom,youcompleteme#SubCommandsComplete -range
-        \ YcmCompleter call s:CompleterCommand(<count>,
-        \                                      <line1>,
-        \                                      <line2>,
-        \                                      <f-args>)
+  if s:Pyeval( 'vimsupport.VimVersionAtLeast( "7.4.1898" )' )
+    command! -nargs=* -complete=custom,youcompleteme#SubCommandsComplete -range
+          \ YcmCompleter call s:CompleterCommand(<q-mods>,
+          \                                      <count>,
+          \                                      <line1>,
+          \                                      <line2>,
+          \                                      <f-args>)
+  else
+    command! -nargs=* -complete=custom,youcompleteme#SubCommandsComplete -range
+          \ YcmCompleter call s:CompleterCommand('',
+          \                                      <count>,
+          \                                      <line1>,
+          \                                      <line2>,
+          \                                      <f-args>)
+  endif
   command! YcmDiags call s:ShowDiagnostics()
   command! YcmShowDetailedDiagnostic call s:ShowDetailedDiagnostic()
   command! YcmForceCompileAndDiagnostics call s:ForceCompileAndDiagnostics()
@@ -959,7 +969,7 @@ function! youcompleteme#LogsComplete( arglead, cmdline, cursorpos )
 endfunction
 
 
-function! s:CompleterCommand( count, line1, line2, ... )
+function! s:CompleterCommand( mods, count, line1, line2, ... )
   " CompleterCommand will call the OnUserCommand function of a completer. If
   " the first arguments is of the form "ft=..." it can be used to specify the
   " completer to use (for example "ft=cpp"). Else the native filetype completer
@@ -980,6 +990,7 @@ function! s:CompleterCommand( count, line1, line2, ... )
   exec s:python_command "ycm_state.SendCommandRequest(" .
         \ "vim.eval( 'l:arguments' )," .
         \ "vim.eval( 'l:completer' )," .
+        \ "vim.eval( 'a:mods' )," .
         \ "vimsupport.GetBoolValue( 'a:count != -1' )," .
         \ "vimsupport.GetIntValue( 'a:line1' )," .
         \ "vimsupport.GetIntValue( 'a:line2' ) )"
