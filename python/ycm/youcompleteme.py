@@ -43,7 +43,7 @@ from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
 from ycm.client.base_request import BaseRequest, BuildRequestData
 from ycm.client.completer_available_request import SendCompleterAvailableRequest
-from ycm.client.command_request import SendCommandRequest, SendGetTypeRequest
+from ycm.client.command_request import SendCommandRequest, SendGetDocRequest, SendGetTypeRequest
 from ycm.client.completion_request import CompletionRequest
 from ycm.client.debug_info_request import ( SendDebugInfoRequest,
                                             FormatDebugInfoResponse )
@@ -342,6 +342,10 @@ class YouCompleteMe( object ):
 
   def GetType( self, line, column ):
     return SendGetTypeRequest( line, column )
+
+
+  def GetDoc( self, line, column ):
+    return SendGetDocRequest( line, column )
 
 
   def GetDefinedSubcommands( self ):

@@ -56,7 +56,7 @@ class CommandRequest( BaseRequest ):
                                              'run_completer_command' )
 
 
-  def StartGetTypeImprecise( self, line, column ):
+  def StartImpreciseCommand( self, line, column ):
     current_filepath = vimsupport.GetCurrentBufferFilepath()
     request_data = {
       'filepath': current_filepath,
@@ -76,8 +76,8 @@ class CommandRequest( BaseRequest ):
       'completer_target': self._completer_target,
       'command_arguments': self._arguments
     } )
-    self._response = self.PostDataToHandler( request_data,
-                                             'run_completer_command' )
+    self._response = self.PostDataToHandler( request_data, 'run_completer_command',
+                                             timeout = 2, display_message = False )
 
 
   def Response( self ):
@@ -166,7 +166,7 @@ def SendCommandRequest( arguments, completer, modifiers, extra_data = None ):
 
 def SendGetTypeRequest( line, column ):
   request = CommandRequest( [ 'GetTypeImprecise' ] )
-  request.StartGetTypeImprecise( line, column )
+  request.StartImpreciseCommand( line, column )
   response = request.Response()
   msg = ''
   if response and 'message' in response:
@@ -174,6 +174,13 @@ def SendGetTypeRequest( line, column ):
     if msg == 'Unknown type':
       msg = ''
   return msg
+
+
+def SendGetDocRequest( line, column ):
+  request = CommandRequest( [ 'GetDocImprecise' ] )
+  request.StartImpreciseCommand( line, column )
+  response = request.Response()
+  return response [ 'detailed_info' ] if response else ''
 
 
 def _BuildQfListItem( goto_data_item ):
