@@ -682,7 +682,7 @@ endfunction
 
 function! s:OnDeleteChar()
   if !s:AllowedToCompleteInCurrentBuffer()
-    return
+    return ""
   endif
 
   call timer_stop( s:pollers.completion.id )
