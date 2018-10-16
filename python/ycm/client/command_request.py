@@ -70,7 +70,6 @@ class CommandRequest( BaseRequest ):
     if self._extra_data:
       request_data.update( self._extra_data )
     request_data.update( {
-      'completer_target': self._completer_target,
       'command_arguments': self._arguments
     } )
     self._response = self.PostDataToHandler( request_data,
