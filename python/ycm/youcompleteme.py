@@ -43,7 +43,8 @@ from ycm import syntax_parse
 from ycm.client.ycmd_keepalive import YcmdKeepalive
 from ycm.client.base_request import BaseRequest, BuildRequestData
 from ycm.client.completer_available_request import SendCompleterAvailableRequest
-from ycm.client.command_request import SendCommandRequest, SendGetDocRequest, SendGetTypeRequest
+from ycm.client.command_request import ( SendCommandRequest, SendGetDocRequest,
+                                         SendGetTypeRequest )
 from ycm.client.completion_request import CompletionRequest
 from ycm.client.debug_info_request import ( SendDebugInfoRequest,
                                             FormatDebugInfoResponse )
@@ -323,11 +324,19 @@ class YouCompleteMe( object ):
 
   def SendCommandRequest( self,
                           arguments,
-                          completer,
                           modifiers,
                           has_range,
                           start_line,
                           end_line ):
+    final_arguments = []
+    for argument in arguments:
+      # The ft= option which specifies the completer when running a command is
+      # ignored because it has not been working for a long time. The option is
+      # still parsed to not break users that rely on it.
+      if argument.startswith( 'ft=' ):
+        continue
+      final_arguments.append( argument )
+
     extra_data = {
       'options': {
         'tab_size': vimsupport.GetIntValue( 'shiftwidth()' ),
@@ -337,7 +346,8 @@ class YouCompleteMe( object ):
     if has_range:
       extra_data.update( vimsupport.BuildRange( start_line, end_line ) )
     self._AddExtraConfDataIfNeeded( extra_data )
-    return SendCommandRequest( arguments, completer, modifiers, extra_data )
+
+    return SendCommandRequest( final_arguments, modifiers, extra_data )
 
 
   def GetType( self, line, column ):
@@ -681,7 +691,9 @@ class YouCompleteMe( object ):
                       self._server_stdout,
                       self._server_stderr ]
 
-    debug_info = SendDebugInfoRequest()
+    extra_data = {}
+    self._AddExtraConfDataIfNeeded( extra_data )
+    debug_info = SendDebugInfoRequest( extra_data )
     if debug_info:
       completer = debug_info[ 'completer' ]
       if completer:

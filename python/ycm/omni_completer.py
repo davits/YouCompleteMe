@@ -88,10 +88,15 @@ class OmniCompleter( Completer ):
 
     try:
       start_column = vimsupport.GetIntValue( self._omnifunc + '(1,"")' )
-      if start_column < 0:
-        # FIXME: Technically, if the returned value is -1 we should raise an
-        # error.
+
+      # Vim only stops completion if the value returned by the omnifunc is -3 or
+      # -2. In other cases, if the value is negative or greater than the current
+      # column, the start column is set to the current column; otherwise, the
+      # value is used as the start column.
+      if start_column in ( -3, -2 ):
         return []
+      if start_column < 0 or start_column > column:
+        start_column = column
 
       # Use the start column calculated by the omnifunc, rather than our own
       # interpretation. This is important for certain languages where our
@@ -118,7 +123,14 @@ class OmniCompleter( Completer ):
       if not hasattr( items, '__iter__' ):
         raise TypeError( OMNIFUNC_NOT_LIST )
 
-      return list( filter( bool, items ) )
+      # Vim allows each item of the list to be either a string or a dictionary
+      # but ycmd only supports lists where items are all strings or all
+      # dictionaries. Convert all strings into dictionaries.
+      for index, item in enumerate( items ):
+        if not isinstance( item, dict ):
+          items[ index ] = { 'word': item }
+
+      return items
 
     except ( TypeError, ValueError, vim.error ) as error:
       vimsupport.PostVimMessage(
