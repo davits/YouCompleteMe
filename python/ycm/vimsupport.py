@@ -217,15 +217,19 @@ class DiagnosticSign( namedtuple( 'DiagnosticSign',
 
 
 def GetSignsInBuffer( buffer_number ):
-  sign_output = CaptureVimCommand(
-    'sign place buffer={}'.format( buffer_number ) )
   signs = []
-  for line in sign_output.split( '\n' ):
-    match = SIGN_PLACE_REGEX.search( line )
-    if match:
-      signs.append( DiagnosticSign( int( match.group( 'id' ) ),
-                                    int( match.group( 'line' ) ),
-                                    match.group( 'name' ),
+  vim_signs = VimExpressionToPythonType(
+    'sign_getplaced({})'.format( buffer_number ) )
+
+  if not vim_signs:
+    return signs
+
+  all_signs = vim_signs[ 0 ][ 'signs' ]
+  for sign in all_signs:
+    if sign[ 'name' ].startswith( 'Ycm' ):
+      signs.append( DiagnosticSign( sign[ 'id' ],
+                                    sign[ 'lnum' ],
+                                    sign[ 'name' ],
                                     buffer_number ) )
   return signs
 
