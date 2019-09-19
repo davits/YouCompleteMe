@@ -107,7 +107,11 @@ class GoToResponse_QuickFix_test( object ):
     ] )
     vim_command.assert_has_exact_calls( [
       call( 'botright copen' ),
-      call( 'au WinLeave <buffer> q' ),
+      call( 'augroup ycmquickfix' ),
+      call( 'autocmd! * <buffer>' ),
+      call( 'autocmd WinLeave <buffer> '
+            'if bufnr( "%" ) == expand( "<abuf>" ) | q | endif' ),
+      call( 'augroup END' ),
       call( 'doautocmd User YcmQuickFixOpened' )
     ] )
     set_fitting_height.assert_called_once_with()
@@ -268,7 +272,8 @@ class Response_Detection_test( object ):
             response[ 'filepath' ],
             response[ 'line_num' ],
             response[ 'column_num' ],
-            'rightbelow' )
+            'rightbelow',
+            'same-buffer' )
 
     def GoToListTest( command, response ):
       # Note: the detail of these called are tested by

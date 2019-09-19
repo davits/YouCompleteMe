@@ -36,6 +36,7 @@ from ycmd.utils import ToBytes
 from ycm.client.completion_request import ( CompletionRequest,
                                             _FilterToMatchingCompletions,
                                             _GetRequiredNamespaceImport )
+from ycm.client.omni_completion_request import OmniCompletionRequest
 
 
 def CompleteItemIs( word, abbr = None, menu = None,
@@ -66,17 +67,21 @@ def BuildCompletion( insertion_text = 'Test',
                      detailed_info = None,
                      kind = None,
                      extra_data = None ):
-  if extra_data is None:
-    extra_data = {}
-
-  return {
-    'extra_data': extra_data,
-    'insertion_text': insertion_text,
-    'menu_text': menu_text,
-    'extra_menu_info': extra_menu_info,
-    'kind': kind,
-    'detailed_info': detailed_info,
+  completion = {
+    'insertion_text': insertion_text
   }
+
+  if extra_menu_info:
+    completion[ 'extra_menu_info' ] = extra_menu_info
+  if menu_text:
+    completion[ 'menu_text' ] = menu_text
+  if detailed_info:
+    completion[ 'detailed_info' ] = detailed_info
+  if kind:
+    completion[ 'kind' ] = kind
+  if extra_data:
+    completion[ 'extra_data' ] = extra_data
+  return completion
 
 
 def BuildCompletionNamespace( namespace = None,
@@ -123,54 +128,38 @@ def _SetUpCompleteDone( completions ):
   with patch( 'ycm.vimsupport.TextBeforeCursor', return_value = '   Test' ):
     request = CompletionRequest( None )
     request.Done = MagicMock( return_value = True )
-    request.RawResponse = MagicMock( return_value = {
+    request._RawResponse = MagicMock( return_value = {
       'completions': completions
     } )
     yield request
 
 
-@patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'cs' ] )
-def GetCompleteDoneHooks_ResultOnCsharp_test( *args ):
-  request = CompletionRequest( None )
-  result = list( request._GetCompleteDoneHooks() )
-  eq_( result, [ request._OnCompleteDone_Csharp ] )
-
-
-@patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'java' ] )
-def GetCompleteDoneHooks_ResultOnJava_test( *args ):
-  request = CompletionRequest( None )
-  result = list( request._GetCompleteDoneHooks() )
-  eq_( result, [ request._OnCompleteDone_FixIt ] )
-
-
-@patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'typescript' ] )
-def GetCompleteDoneHooks_ResultOnTypeScript_test( *args ):
-  request = CompletionRequest( None )
-  result = list( request._GetCompleteDoneHooks() )
-  eq_( result, [ request._OnCompleteDone_FixIt ] )
-
-
 @patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'ycmtest' ] )
-def GetCompleteDoneHooks_EmptyOnOtherFiletype_test( *args ):
-  request = CompletionRequest( None )
-  result = request._GetCompleteDoneHooks()
-  eq_( len( list( result ) ), 0 )
-
-
-@patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'ycmtest' ] )
-def OnCompleteDone_WithActionCallsIt_test( *args ):
+def OnCompleteDone_DefaultFixIt_test( *args ):
   request = CompletionRequest( None )
   request.Done = MagicMock( return_value = True )
-  action = MagicMock()
-  request._complete_done_hooks[ 'ycmtest' ] = action
+  request._OnCompleteDone_Csharp = MagicMock()
+  request._OnCompleteDone_FixIt = MagicMock()
   request.OnCompleteDone()
-  ok_( action.called )
+  request._OnCompleteDone_Csharp.assert_not_called()
+  request._OnCompleteDone_FixIt.assert_called_once_with()
+
+
+@patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'cs' ] )
+def OnCompleteDone_CsharpFixIt_test( *args ):
+  request = CompletionRequest( None )
+  request.Done = MagicMock( return_value = True )
+  request._OnCompleteDone_Csharp = MagicMock()
+  request._OnCompleteDone_FixIt = MagicMock()
+  request.OnCompleteDone()
+  request._OnCompleteDone_Csharp.assert_called_once_with()
+  request._OnCompleteDone_FixIt.assert_not_called()
 
 
 @patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'ycmtest' ] )
-def OnCompleteDone_NoActionNoError_test( *args ):
+def OnCompleteDone_NoFixItIfNotDone_test( *args ):
   request = CompletionRequest( None )
-  request.Done = MagicMock( return_value = True )
+  request.Done = MagicMock( return_value = False )
   request._OnCompleteDone_Csharp = MagicMock()
   request._OnCompleteDone_FixIt = MagicMock()
   request.OnCompleteDone()
@@ -179,13 +168,14 @@ def OnCompleteDone_NoActionNoError_test( *args ):
 
 
 @patch( 'ycm.vimsupport.CurrentFiletypes', return_value = [ 'ycmtest' ] )
-def OnCompleteDone_NoActionIfNotDone_test( *args ):
-  request = CompletionRequest( None )
-  request.Done = MagicMock( return_value = False )
-  action = MagicMock()
-  request._complete_done_hooks[ 'ycmtest' ] = action
+def OnCompleteDone_NoFixItForOmnifunc_test( *args ):
+  request = OmniCompletionRequest( 'omnifunc', None )
+  request.Done = MagicMock( return_value = True )
+  request._OnCompleteDone_Csharp = MagicMock()
+  request._OnCompleteDone_FixIt = MagicMock()
   request.OnCompleteDone()
-  action.assert_not_called()
+  request._OnCompleteDone_Csharp.assert_not_called()
+  request._OnCompleteDone_FixIt.assert_not_called()
 
 
 def FilterToCompletedCompletions_MatchIsReturned_test():
